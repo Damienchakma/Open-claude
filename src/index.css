@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Tiempos+Text:wght@400;600&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-tiempos: 'Tiempos Text', 'Georgia', serif;
+
+  --color-claude-orange: #d97757;
+  --color-claude-brown: #c16540;
+}
+
+:root {
+  /* Light mode - Claude's clean aesthetic */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #FAFAFA;
+  --bg-tertiary: #F5F5F5;
+  --bg-hover: #F0F0F0;
+  --text-primary: #2F2F2F;
+  --text-secondary: #6B6B6B;
+  --text-tertiary: #8F8F8F;
+  --accent: #d97757;
+  --accent-hover: #c16540;
+  --border: #E5E5E5;
+  --border-light: #F0F0F0;
+  --shadow: rgba(0, 0, 0, 0.06);
+  --shadow-md: rgba(0, 0, 0, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode - Softer, more refined */
+    --bg-primary: #1F1F1F;
+    --bg-secondary: #2A2A2A;
+    --bg-tertiary: #333333;
+    --bg-hover: #3A3A3A;
+    --text-primary: #E8E8E8;
+    --text-secondary: #A8A8A8;
+    --text-tertiary: #8A8A8A;
+    --accent: #e89b7d;
+    --accent-hover: #d97757;
+    --border: #3A3A3A;
+    --border-light: #2F2F2F;
+    --shadow: rgba(0, 0, 0, 0.3);
+    --shadow-md: rgba(0, 0, 0, 0.4);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-inter);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar styling - More subtle */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+/* Smooth animations - More subtle */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 1.5s ease-in-out infinite;
+}
+
+/* Focus styles */
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(217, 119, 87, 0.2);
+  color: var(--text-primary);
+}

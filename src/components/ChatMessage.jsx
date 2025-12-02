@@ -1,0 +1,192 @@
+import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { User, Bot, Copy, Check, Code, ExternalLink } from 'lucide-react';
+import { useChat } from '../context/ChatContext';
+import { ThinkingDisplay } from './ThinkingDisplay';
+
+export function ChatMessage({ message }) {
+    const isUser = message.role === 'user';
+    const [copiedCode, setCopiedCode] = React.useState(null);
+    const { setCurrentArtifactId } = useChat();
+
+    const copyCode = (code, index) => {
+        navigator.clipboard.writeText(code);
+        setCopiedCode(index);
+        setTimeout(() => setCopiedCode(null), 2000);
+    };
+
+    // Check for artifact placeholder
+    const artifactMatch = message.content.match(/:::artifact\{id="([^"]+)" title="([^"]+)" type="([^"]+)"\}/);
+
+    // Split content by artifact placeholder to render parts
+    const parts = message.content.split(/:::artifact\{[^}]+\}/);
+
+    return (
+        <div className={`flex gap-3 md:gap-4 py-6 px-4 transition-colors ${isUser ? '' : 'bg-[var(--bg-secondary)]'
+            }`}>
+            <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center shrink-0 ${isUser
+                ? 'bg-[var(--accent)] text-white'
+                : ''
+                }`}>
+                {isUser ? <User size={18} /> : <img src="/claude-logo.svg" alt="Claude" className="w-full h-full" />}
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+                <div className="font-medium text-sm mb-1.5 text-[var(--text-primary)]">
+                    {isUser ? 'You' : 'Open Claude'}
+                </div>
+
+                {/* Thinking/Reasoning Section - only for assistant messages */}
+                {!isUser && message.thinking && (
+                    <ThinkingDisplay
+                        thinking={message.thinking}
+                        tokens={message.thinkingTokens}
+                        duration={message.duration}
+                    />
+                )}
+                <div className="prose prose-sm max-w-none text-[var(--text-primary)] leading-relaxed">
+                    {parts.map((part, index) => (
+                        <React.Fragment key={index}>
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                    code({ node, inline, className, children, ...props }) {
+                                        const match = /language-(\w+)/.exec(className || '');
+                                        const codeString = String(children).replace(/\n$/, '');
+                                        const codeIndex = `${message.id}-${index}-${codeString.substring(0, 20)}`;
+
+                                        return !inline && match ? (
+                                            <div className="relative group my-3">
+                                                <div className="flex items-center justify-between bg-[var(--bg-tertiary)] px-3 py-2 rounded-t-md border-b border-[var(--border)]">
+                                                    <span className="text-xs font-mono text-[var(--text-secondary)]">
+                                                        {match[1]}
+                                                    </span>
+                                                    <button
+                                                        onClick={() => copyCode(codeString, codeIndex)}
+                                                        className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-secondary)]">
+                                                        {copiedCode === codeIndex ? (
+                                                            <>
+                                                                <Check size={14} className="text-green-500" />
+                                                                <span className="text-green-500">Copied!</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Copy size={14} />
+                                                                <span>Copy</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                                <SyntaxHighlighter
+                                                    style={vscDarkPlus}
+                                                    language={match[1]}
+                                                    PreTag="div"
+                                                    customStyle={{
+                                                        margin: 0,
+                                                        borderRadius: '0 0 0.375rem 0.375rem',
+                                                        fontSize: '0.875rem',
+                                                        background: 'var(--bg-tertiary)'
+                                                    }}
+                                                    {...props}
+                                                >
+                                                    {codeString}
+                                                </SyntaxHighlighter>
+                                            </div>
+                                        ) : (
+                                            <code className="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-sm font-mono border border-[var(--border-light)]" {...props}>
+                                                {children}
+                                            </code>
+                                        );
+                                    },
+                                    p({ children }) {
+                                        return <p className="mb-3 last:mb-0 leading-7">{children}</p>;
+                                    },
+                                    ul({ children }) {
+                                        return <ul className="list-disc pl-6 mb-3 space-y-1.5">{children}</ul>;
+                                    },
+                                    ol({ children }) {
+                                        return <ol className="list-decimal pl-6 mb-3 space-y-1.5">{children}</ol>;
+                                    },
+                                    li({ children }) {
+                                        return <li className="leading-7">{children}</li>;
+                                    },
+                                    h1({ children }) {
+                                        return <h1 className="text-2xl font-semibold mb-3 mt-4">{children}</h1>;
+                                    },
+                                    h2({ children }) {
+                                        return <h2 className="text-xl font-semibold mb-2.5 mt-4">{children}</h2>;
+                                    },
+                                    h3({ children }) {
+                                        return <h3 className="text-lg font-semibold mb-2 mt-3">{children}</h3>;
+                                    },
+                                    blockquote({ children }) {
+                                        return (
+                                            <blockquote className="border-l-3 border-[var(--accent)] pl-4 my-3 text-[var(--text-secondary)]">
+                                                {children}
+                                            </blockquote>
+                                        );
+                                    },
+                                    a({ children, href }) {
+                                        return (
+                                            <a
+                                                href={href}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-[var(--accent)] hover:underline"
+                                            >
+                                                {children}
+                                            </a>
+                                        );
+                                    },
+                                    table({ children }) {
+                                        return (
+                                            <div className="overflow-x-auto my-4">
+                                                <table className="min-w-full border border-[var(--border)] rounded-lg">
+                                                    {children}
+                                                </table>
+                                            </div>
+                                        );
+                                    },
+                                    th({ children }) {
+                                        return (
+                                            <th className="border border-[var(--border)] px-4 py-2 bg-[var(--bg-tertiary)] text-left font-semibold">
+                                                {children}
+                                            </th>
+                                        );
+                                    },
+                                    td({ children }) {
+                                        return (
+                                            <td className="border border-[var(--border)] px-4 py-2">
+                                                {children}
+                                            </td>
+                                        );
+                                    }
+                                }}
+                            >
+                                {part}
+                            </ReactMarkdown>
+                            {index < parts.length - 1 && artifactMatch && (
+                                <div
+                                    onClick={() => setCurrentArtifactId(artifactMatch[1])}
+                                    className="my-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg cursor-pointer hover:border-[var(--accent)] transition-colors group flex items-center gap-3"
+                                >
+                                    <div className="w-10 h-10 bg-[var(--bg-secondary)] rounded-md flex items-center justify-center text-[var(--accent)]">
+                                        <Code size={20} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm">Artifact Created</div>
+                                        <div className="text-xs text-[var(--text-tertiary)]">Click to view {artifactMatch[2]}</div>
+                                    </div>
+                                    <ExternalLink size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" />
+                                </div>
+                            )}
+                        </React.Fragment>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
