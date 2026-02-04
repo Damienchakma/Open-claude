@@ -232,7 +232,8 @@ export class ModelService {
             groq: { models: null, timestamp: null },
             ollama: { models: null, timestamp: null },
             lmstudio: { models: null, timestamp: null },
-            openai: { models: null, timestamp: null }
+            openai: { models: null, timestamp: null },
+            gemini: { models: null, timestamp: null }
         };
         this.CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
     }
@@ -408,6 +409,56 @@ export class ModelService {
         }
     }
 
+    // Fetch models from Gemini (Google Generative Language API)
+    async fetchGeminiModels(apiKey) {
+        if (!apiKey) return [];
+
+        try {
+            if (this.cache.gemini.models && (Date.now() - this.cache.gemini.timestamp < this.CACHE_DURATION)) {
+                return this.cache.gemini.models;
+            }
+
+            const url = new URL('https://generativelanguage.googleapis.com/v1beta/models');
+            url.searchParams.set('key', apiKey);
+
+            const response = await fetch(url.toString());
+
+            if (!response.ok) {
+                throw new Error('Failed to fetch Gemini models');
+            }
+
+            const data = await response.json();
+
+            const models = (data.models || [])
+                .filter(model => {
+                    const methods = model.supportedGenerationMethods || [];
+                    return methods.includes('generateContent') || methods.includes('streamGenerateContent');
+                })
+                .map(model => {
+                    const id = model.name?.replace(/^models\//, '') || model.id;
+                    return {
+                        id,
+                        name: model.displayName || id,
+                        provider: 'gemini',
+                        contextWindow: model.inputTokenLimit,
+                        capabilities: getModelCapabilities(id)
+                    };
+                })
+                .filter(model => model.id)
+                .sort((a, b) => a.id.localeCompare(b.id));
+
+            this.cache.gemini = {
+                models,
+                timestamp: Date.now()
+            };
+
+            return models;
+        } catch (error) {
+            console.error('Error fetching Gemini models:', error);
+            return [];
+        }
+    }
+
     // Clear cache for a specific provider
     clearCache(provider) {
         if (provider && this.cache[provider]) {
@@ -445,14 +496,9 @@ export class ModelService {
         // Fetch LM Studio models
         allModels.lmstudio = await this.fetchLMStudioModels();
 
-        // Add Gemini models (Google doesn't have a public list endpoint)
+        // Fetch Gemini models dynamically
         if (apiKeys.gemini) {
-            allModels.gemini = [
-                { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash (Exp)', provider: 'gemini', contextWindow: 1000000, capabilities: getModelCapabilities('gemini-2.0-flash-exp') },
-                { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', contextWindow: 2000000, capabilities: getModelCapabilities('gemini-1.5-pro') },
-                { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini', contextWindow: 1000000, capabilities: getModelCapabilities('gemini-1.5-flash') },
-                { id: 'gemini-pro', name: 'Gemini Pro', provider: 'gemini', contextWindow: 32768, capabilities: getModelCapabilities('gemini-pro') }
-            ];
+            allModels.gemini = await this.fetchGeminiModels(apiKeys.gemini);
         }
 
         return allModels;
