@@ -83,6 +83,17 @@ function ChatMode() {
         scrollToBottom();
     }, [messages, streamingMessage]);
 
+    const createImagePayload = (dataUrl) => {
+        if (!dataUrl) return null;
+        const [meta, base64] = dataUrl.split(',');
+        const typeMatch = meta?.match(/data:(.*?);base64/);
+        return {
+            dataUrl,
+            base64: base64 || '',
+            type: typeMatch ? typeMatch[1] : 'image/png'
+        };
+    };
+
     const handleSendMessage = async () => {
         if (!input.trim() || isLoading) return;
 
@@ -90,7 +101,9 @@ function ChatMode() {
         const imageToSend = selectedImage;
         setInput('');
         setSelectedImage(null); // Clear image after sending
-        addMessage('user', userMessage);
+        const imagePayload = createImagePayload(imageToSend);
+        const images = imagePayload && supportsImages ? [imagePayload] : [];
+        addMessage('user', userMessage, {}, null, images);
         setIsLoading(true);
         thinkingStartTime.current = Date.now();
 
@@ -235,20 +248,12 @@ function ChatMode() {
                 ...messages
             ];
 
-            // Build multimodal content if image is present
-            let userContent;
-            if (imageToSend && supportsImages) {
-                userContent = [
-                    { type: 'text', text: userMessage + (context ? "\n\nContext from Web Search:" + context : '') },
-                    { type: 'image_url', image_url: { url: imageToSend } }
-                ];
-            } else {
-                userContent = userMessage + (context ? "\n\nContext from Web Search:" + context : '');
-            }
+            const userContent = userMessage + (context ? "\n\nContext from Web Search:" + context : '');
 
             messagesWithContext.push({
                 role: 'user',
-                content: userContent
+                content: userContent,
+                images
             });
 
             // Start streaming
