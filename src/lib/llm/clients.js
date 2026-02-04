@@ -444,7 +444,7 @@ export class GeminiClient extends BaseClient {
         const tagParser = new StreamingTagParser();
 
         const getCandidateText = (candidate) => {
-            if (!candidate?.content?.parts) return null;
+            if (!candidate?.content?.parts) return '';
             return candidate.content.parts
                 .map(part => part.text || '')
                 .join('');
@@ -524,7 +524,7 @@ export class GeminiClient extends BaseClient {
                         onChunk(extracted.thinking, { isThinking: true });
                     }
 
-                    const content = extracted.content || candidateText;
+                    const content = extracted.content ?? candidateText;
                     if (content) {
                         // Parse for tags
                         const results = tagParser.processChunk(content);
@@ -560,7 +560,7 @@ export class GeminiClient extends BaseClient {
                             onChunk(extracted.thinking, { isThinking: true });
                         }
 
-                        const content = extracted.content || candidateText;
+                        const content = extracted.content ?? candidateText;
                         if (content) {
                             const results = tagParser.processChunk(content);
                             for (const result of results) {
