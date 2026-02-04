@@ -13,6 +13,10 @@ export function ThinkingDisplay({ thinking, tokens, duration, isStreaming = fals
     // Calculate character count if tokens not provided
     const displayCount = tokens || thinking?.length || 0;
     const countLabel = tokens ? `${tokens} tokens` : `${displayCount} chars`;
+    const previewText = thinking
+        ? thinking.trim().replace(/\s+/g, ' ').slice(0, 140)
+        : '';
+    const previewLabel = previewText ? `${previewText}${thinking.length > 140 ? '…' : ''}` : '';
 
     // Format duration (milliseconds to seconds)
     const formatDuration = (ms) => {
@@ -33,7 +37,7 @@ export function ThinkingDisplay({ thinking, tokens, duration, isStreaming = fals
     };
 
     return (
-        <div className="thinking-container mb-3 rounded-lg overflow-hidden border border-purple-200 dark:border-purple-900/30 bg-gradient-to-br from-indigo-50/50 via-purple-50/30 to-pink-50/20 dark:from-indigo-950/20 dark:via-purple-950/20 dark:to-pink-950/10">
+        <div className="thinking-container mb-3 rounded-lg overflow-hidden border border-purple-200 dark:border-purple-900/30 bg-gradient-to-br from-indigo-50/60 via-purple-50/40 to-pink-50/30 dark:from-indigo-950/30 dark:via-purple-950/25 dark:to-pink-950/20 shadow-sm">
             <button
                 onClick={handleToggle}
                 onKeyDown={handleKeyDown}
@@ -64,16 +68,21 @@ export function ThinkingDisplay({ thinking, tokens, duration, isStreaming = fals
 
                 <div className="flex-1 min-w-0">
                     <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
-                        {isStreaming && !thinking ? 'Thinking...' : (isExpanded ? 'Hide reasoning' : 'Show reasoning')}
+                        {isStreaming && !thinking ? 'Reasoning in progress…' : 'Reasoning'}
                     </span>
-                    {!isExpanded && thinking && !isStreaming && (
+                    {!isExpanded && thinking && (
                         <div className="text-xs text-purple-600/70 dark:text-purple-400/70 truncate mt-0.5">
-                            Click to expand reasoning
+                            {previewLabel || 'Click to expand reasoning'}
                         </div>
                     )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
+                    {!isStreaming && (
+                        <span className="text-xs text-purple-600/70 dark:text-purple-400/70">
+                            {isExpanded ? 'Hide' : 'Show'}
+                        </span>
+                    )}
                     {thinking && displayCount > 0 && (
                         <span className="px-2 py-0.5 bg-purple-200/60 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
                             {countLabel}
