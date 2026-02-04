@@ -567,6 +567,11 @@ export class GeminiClient extends BaseClient {
                                 onChunk(result.content, { isThinking: result.isThinking });
                             }
                         }
+
+                        const finishReason = candidate?.finishReason;
+                        if (finishReason) {
+                            onChunk('', { finishReason });
+                        }
                     }
                 }
             } catch (e) {
