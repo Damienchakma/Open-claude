@@ -13,7 +13,7 @@
 [![Vite](https://img.shields.io/badge/Vite-5.1-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 
 <p align="center">
-  <b>Open Claude</b> is an <b>extensible</b>, <b>feature-rich</b>, and <b>user-friendly</b> AI workspace inspired by Anthropic's <b>Claude Opus 5 & Claude 3.7</b> interface. It supports frontier cloud models (<b>Google Gemini 3.7</b>, <b>OpenAI GPT-5.6 / o3</b>, <b>Groq LPU Llama 4 & DeepSeek-V4</b>) as well as 100% offline local LLMs (<b>Ollama</b>, <b>LM Studio</b>) with built-in Deep Research, real-time CoT thinking stream, live camera photo capture, and interactive sandboxed artifacts.
+  <b>Open Claude</b> is an <b>extensible</b>, <b>feature-rich</b>, and <b>user-friendly</b> AI workspace inspired by Anthropic's Claude chatbot UI. It supports frontier cloud models (<b>Google Gemini 3.7</b>, <b>OpenAI GPT-5.6 / o3</b>, <b>Groq LPU Llama 4 & DeepSeek-V4</b>) as well as 100% offline local LLMs (<b>Ollama</b>, <b>LM Studio</b>) with built-in Deep Research, real-time CoT thinking stream, live camera photo capture, and interactive sandboxed artifacts.
 </p>
 
 [✨ Key Features](#-key-features) • [📸 Showcase](#-interface-showcase) • [🤖 Supported Frontier Models](#-supported-frontier-models--providers) • [🚀 Quick Start](#-quick-start) • [⚙️ Configuration](#-configuration--api-keys) • [🤝 Contributing](#-contributing)
