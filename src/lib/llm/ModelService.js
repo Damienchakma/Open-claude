@@ -415,13 +415,13 @@ export class ModelService {
                 .sort((a, b) => a.id.localeCompare(b.id));
 
             const finalModels = models.length > 0 ? models : [
-                { id: 'llama-4-scout', name: 'Llama 4 Scout (Multimodal)', provider: 'groq', capabilities: getModelCapabilities('llama-4-scout', 'groq') },
-                { id: 'llama-4-maverick', name: 'Llama 4 Maverick', provider: 'groq', capabilities: getModelCapabilities('llama-4-maverick', 'groq') },
                 { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
-                { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', provider: 'groq', capabilities: getModelCapabilities('deepseek-v4-pro', 'groq') },
-                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
+                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
+                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
                 { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
-                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') }
+                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
+                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') },
+                { id: 'qwen-2.5-32b', name: 'Qwen 2.5 32B', provider: 'groq', capabilities: getModelCapabilities('qwen-2.5-32b', 'groq') }
             ];
 
             this.cache.groq = {
@@ -433,13 +433,13 @@ export class ModelService {
         } catch (error) {
             console.error('Error fetching Groq models:', error);
             return [
-                { id: 'llama-4-scout', name: 'Llama 4 Scout (Multimodal)', provider: 'groq', capabilities: getModelCapabilities('llama-4-scout', 'groq') },
-                { id: 'llama-4-maverick', name: 'Llama 4 Maverick', provider: 'groq', capabilities: getModelCapabilities('llama-4-maverick', 'groq') },
                 { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
-                { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', provider: 'groq', capabilities: getModelCapabilities('deepseek-v4-pro', 'groq') },
-                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
+                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
+                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
                 { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
-                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') }
+                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
+                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') },
+                { id: 'qwen-2.5-32b', name: 'Qwen 2.5 32B', provider: 'groq', capabilities: getModelCapabilities('qwen-2.5-32b', 'groq') }
             ];
         }
     }

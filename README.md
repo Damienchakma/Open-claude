@@ -13,10 +13,10 @@
 [![Vite](https://img.shields.io/badge/Vite-5.1-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
 
 <p align="center">
-  <b>Open Claude</b> is an <b>extensible</b>, <b>feature-rich</b>, and <b>user-friendly</b> AI workspace inspired by Anthropic's Claude chatbot UI. It supports frontier cloud models (<b>Google Gemini 3.7</b>, <b>OpenAI GPT-5.6 / o3</b>, <b>Groq LPU Llama 4 & DeepSeek-V4</b>) as well as 100% offline local LLMs (<b>Ollama</b>, <b>LM Studio</b>) with built-in Deep Research, real-time CoT thinking stream, live camera photo capture, and interactive sandboxed artifacts.
+  <b>Open Claude</b> is an <b>extensible</b>, <b>feature-rich</b>, and <b>user-friendly</b> AI workspace inspired by Anthropic's Claude chatbot UI. It connects directly to cloud LLM providers (<b>Google Gemini</b>, <b>Groq</b>, <b>OpenAI</b>) and local offline runners (<b>Ollama</b>, <b>LM Studio</b>) with built-in Deep Research, real-time CoT thinking streams, live webcam photo capture, and interactive sandboxed artifacts.
 </p>
 
-[✨ Key Features](#-key-features) • [📸 Showcase](#-interface-showcase) • [🤖 Supported Frontier Models](#-supported-frontier-models--providers) • [🚀 Quick Start](#-quick-start) • [⚙️ Configuration](#-configuration--api-keys) • [🤝 Contributing](#-contributing)
+[✨ Key Features](#-key-features) • [📸 Showcase](#-interface-showcase) • [🤖 Supported Providers](#-supported-providers--models) • [🚀 Quick Start](#-quick-start) • [⚙️ Configuration](#-configuration--api-keys) • [🤝 Contributing](#-contributing)
 
 </div>
 
@@ -47,7 +47,7 @@
 ### 📷 Dynamic Multimodal & Live Camera Capture
 - **Live Camera Viewfinder**: Tap the camera icon (📷) to open a built-in webcam capture modal with live viewfinder, front/back camera flipping, and shutter review ("Use Photo" / "Retake").
 - **API-Level Dynamic Vision Detection**: No hardcoded lists — Open Claude dynamically inspects provider API manifests and metadata (e.g. Ollama `details.families`, Gemini multimodal descriptions, LM Studio architectures).
-- **Intelligent Auto-Switching**: When you capture or upload a picture while on a text-only model (e.g., Groq `llama-3.3-70b-versatile`), Open Claude automatically switches to the provider's top vision model (`llama-4-scout` / `llama-3.2-11b-vision-preview` / `gpt-5.6` / `gpt-4o`).
+- **Intelligent Auto-Switching**: When you capture or upload a picture while on a text-only model (e.g., Groq `llama-3.3-70b-versatile`), Open Claude automatically switches to the provider's top vision model (`llama-3.2-11b-vision-preview` / `gpt-4o`).
 - **Clipboard Paste (`Ctrl+V`)**: Paste images or screenshots directly into the prompt box.
 
 ---
@@ -65,7 +65,7 @@
 
 ### 🧠 Universal CoT Thinking & Reasoning Stream
 - **Live Streamed Thoughts**: Real-time token-by-token rendering of `<think>` and `<thinking>` tags alongside native API reasoning fields (`reasoning_content` / `reasoning`).
-- **DeepSeek V4-Pro & R1 on Groq & Ollama**: Seamlessly view DeepSeek's step-by-step mathematical and logical reasoning.
+- **DeepSeek R1 on Groq & Ollama**: Seamlessly view DeepSeek's step-by-step mathematical and logical reasoning.
 - **Metrics & Tokens**: Displays total reasoning token count and elapsed thinking duration.
 - **Collapsible Design**: Elegant gradient accordion to expand or collapse internal monologue.
 
@@ -85,16 +85,15 @@
 
 ---
 
-## 🤖 Supported Frontier Models & Providers
+## 🤖 Supported Providers & Models
 
-| Provider | Frontier Flagship Models | Modality | Speed / Notes |
+| Provider | Active Available Models | Modality | Speed / Notes |
 | :--- | :--- | :---: | :--- |
-| **Anthropic Reference** | `Claude Opus 5 (Thinking)`, `Claude 5 Sonnet`, `Claude 3.7 Sonnet (Hybrid Reasoning)` | Text + Vision + Code | State-of-the-art coding & agentic reasoning |
-| **Google Gemini** | `gemini-3.7-flash`, `gemini-3.5-pro`, `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash` | Text + Vision + Audio + Video | Natively multimodal, 2M+ context window |
-| **OpenAI** | `gpt-5.6 (Sol / Terra / Luna)`, `gpt-5.2`, `o3-high`, `o3-mini`, `o1-pro`, `gpt-4o` | Text + Vision + CoT Reasoning | Frontier reasoning & ultrafast inference |
-| **Groq Cloud (LPU)** | `llama-4-scout`, `llama-4-maverick`, `deepseek-v4-pro`, `deepseek-r1-distill-70b`, `llama-3.3-70b-versatile` | Text + Vision + Thinking | Ultra-fast throughput (~500–750 tokens/s) |
-| **Ollama (Local)** | `llama-4-scout`, `deepseek-v4-pro`, `qwen2.5-vl-72b`, `deepseek-r1-671b`, `gemma-3`, `phi-4` | Text + Vision + Reasoning | 100% private, offline, GPU-accelerated |
-| **LM Studio** | Any GGUF/EXL2 quantized open weights (`llama-4-scout`, `qwen2.5-vl`, `minicpm-v-2.6`) | Text + Vision | Local inference with OpenAI-compatible API |
+| **Google Gemini** | `gemini-3.7-flash`, `gemini-3.5-flash`, `gemini-2.5-pro`, `gemini-2.5-flash` | Text + Vision + Audio | Natively multimodal, 2M+ token context |
+| **Groq Cloud (LPU)** | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `llama-3.2-11b-vision-preview`, `llama-3.2-90b-vision-preview`, `deepseek-r1-distill-llama-70b`, `mixtral-8x7b-32768` | Text + Vision + Thinking | Ultra-fast throughput (~500–750 tokens/s) |
+| **OpenAI** | `gpt-5.6`, `gpt-5.2`, `o3-mini`, `o1`, `gpt-4o`, `gpt-4o-mini` | Text + Vision + CoT Reasoning | Frontier reasoning & function calling |
+| **Ollama (Local)** | `llama3.3`, `llama3.2-vision`, `deepseek-r1`, `qwen2.5-vl`, `mistral`, `gemma2` | Text + Vision + Reasoning | 100% private, offline, GPU-accelerated |
+| **LM Studio** | Any loaded GGUF model (`qwen2.5-vl`, `minicpm-v`, `llama3.3`) | Text + Vision | Local inference via `localhost:1234` |
 
 ---
 
@@ -122,8 +121,8 @@ Open **`http://localhost:5173`** in your browser.
 
 Click the **Settings** icon (⚙️) in the sidebar or top navigation bar to configure keys:
 
-- **Google Gemini**: Get API key at [Google AI Studio](https://aistudio.google.com/app/apikey)
-- **Groq Cloud**: Get API key at [Groq Console](https://console.groq.com/keys)
+- **Google Gemini**: Get free API key at [Google AI Studio](https://aistudio.google.com/app/apikey)
+- **Groq Cloud**: Get free API key at [Groq Console](https://console.groq.com/keys)
 - **OpenAI**: Get API key at [OpenAI Platform](https://platform.openai.com/api-keys)
 - **Tavily (Web Search)**: Get API key at [Tavily Dashboard](https://tavily.com/)
 
