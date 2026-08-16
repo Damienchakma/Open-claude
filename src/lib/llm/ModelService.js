@@ -8,21 +8,24 @@ const VISION_PATTERNS = {
         '-vl',               // Qwen2-VL, Qwen2.5-VL, InternVL
         '_vl',
         'vl-',
-        'gpt-4o',            // OpenAI multimodal (gpt-4o, gpt-4o-mini)
+        'gpt-5',             // OpenAI GPT-5 series (GPT-5.6, GPT-5.2, GPT-5-mini)
         'gpt-4.5',           // GPT-4.5
+        'gpt-4o',            // OpenAI multimodal (gpt-4o, gpt-4o-mini)
         'gpt-4-turbo',       // GPT-4 Turbo with vision
         'o1',                // OpenAI o1 with vision
-        'claude-3',          // Claude 3 models
+        'o3',                // OpenAI o3 with vision
+        'claude-5',          // Claude 5 models (Claude Opus 5, Claude 5 Sonnet)
         'claude-4',          // Claude 4 models
+        'claude-3',          // Claude 3 models
         'claude-sonnet',
         'claude-opus',
         'claude-haiku',
-        'gemini',            // All Gemini chat models are natively multimodal
+        'gemini',            // All Gemini chat models are natively multimodal (Gemini 3.7, 3.5, 2.5, 2.0)
         'llava',             // LLaVA models
         'bakllava',          // BakLLaVA
+        'llama-4',           // Llama 4 multimodal (Llama 4 Scout, Llama 4 Maverick)
         'llama-3.2.*vision', // Llama 3.2 vision
         'llama3.2.*vision',
-        'llama-4',           // Llama 4 multimodal
         'pixtral',           // Mistral Pixtral
         'minicpm-v',         // MiniCPM-V
         'moondream',         // Moondream
@@ -32,6 +35,7 @@ const VISION_PATTERNS = {
         'qwen2.5-vl',        // Qwen2.5-VL
         'qwen-vl',
         'qwen-3.6',          // Qwen 3.6 multimodal
+        'deepseek-v4',       // DeepSeek V4 multimodal
         'granite.*vision',   // IBM Granite vision
         'cogvlm',            // CogVLM
         'internvl',          // InternVL
@@ -360,11 +364,12 @@ export class ModelService {
             console.error('Error fetching OpenAI models:', error);
             // Return fallback list
             return [
+                { id: 'gpt-5.6', name: 'GPT-5.6 Sol', provider: 'openai', capabilities: getModelCapabilities('gpt-5.6', 'openai') },
+                { id: 'gpt-5.2', name: 'GPT-5.2', provider: 'openai', capabilities: getModelCapabilities('gpt-5.2', 'openai') },
+                { id: 'o3-mini', name: 'o3 Mini (Reasoning)', provider: 'openai', capabilities: getModelCapabilities('o3-mini', 'openai') },
+                { id: 'o1', name: 'o1 Reasoning', provider: 'openai', capabilities: getModelCapabilities('o1', 'openai') },
                 { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', capabilities: getModelCapabilities('gpt-4o', 'openai') },
-                { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', capabilities: getModelCapabilities('gpt-4o-mini', 'openai') },
-                { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'openai', capabilities: getModelCapabilities('gpt-4-turbo', 'openai') },
-                { id: 'gpt-4', name: 'GPT-4', provider: 'openai', capabilities: getModelCapabilities('gpt-4', 'openai') },
-                { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai', capabilities: getModelCapabilities('gpt-3.5-turbo', 'openai') },
+                { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', capabilities: getModelCapabilities('gpt-4o-mini', 'openai') }
             ];
         }
     }
@@ -410,12 +415,13 @@ export class ModelService {
                 .sort((a, b) => a.id.localeCompare(b.id));
 
             const finalModels = models.length > 0 ? models : [
+                { id: 'llama-4-scout', name: 'Llama 4 Scout (Multimodal)', provider: 'groq', capabilities: getModelCapabilities('llama-4-scout', 'groq') },
+                { id: 'llama-4-maverick', name: 'Llama 4 Maverick', provider: 'groq', capabilities: getModelCapabilities('llama-4-maverick', 'groq') },
                 { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
-                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
-                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
+                { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', provider: 'groq', capabilities: getModelCapabilities('deepseek-v4-pro', 'groq') },
+                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
                 { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
-                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
-                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') }
+                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') }
             ];
 
             this.cache.groq = {
@@ -427,12 +433,13 @@ export class ModelService {
         } catch (error) {
             console.error('Error fetching Groq models:', error);
             return [
+                { id: 'llama-4-scout', name: 'Llama 4 Scout (Multimodal)', provider: 'groq', capabilities: getModelCapabilities('llama-4-scout', 'groq') },
+                { id: 'llama-4-maverick', name: 'Llama 4 Maverick', provider: 'groq', capabilities: getModelCapabilities('llama-4-maverick', 'groq') },
                 { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
-                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
-                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
+                { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', provider: 'groq', capabilities: getModelCapabilities('deepseek-v4-pro', 'groq') },
+                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
                 { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
-                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
-                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') }
+                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') }
             ];
         }
     }
