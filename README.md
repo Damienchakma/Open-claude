@@ -2,13 +2,14 @@
 
 <div align="center">
 
-**A modern, feature-rich chat interface supporting multiple AI providers with advanced reasoning capabilities**
+**Next-Generation Open-Source Claude AI Workspace with Multimodal Vision, Live Webcam Capture, Deep Research, CoT Reasoning Stream, and Multi-CDN Resilient Artifacts**
 
-[![React](https://img.shields.io/badge/React-18.2-blue.svg)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.1-646CFF.svg)](https://vitejs.dev/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-18.2-blue.svg?style=flat-square&logo=react)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-5.1-646CFF.svg?style=flat-square&logo=vite)](https://vitejs.dev/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind-3.4-38B2AC.svg?style=flat-square&logo=tailwind-css)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 
-[Features](#-features) • [Quick Start](#-quick-start) • [Usage](#-usage) • [Development](#-development) • [Contributing](#-contributing)
+[Features](#-key-features) • [Screenshots](#-interface-showcase) • [Quick Start](#-quick-start) • [Supported Providers](#-supported-providers--models) • [Artifact Runner](#-universal-interactive-artifacts) • [License](#-license)
 
 </div>
 
@@ -16,362 +17,167 @@
 
 ## 📖 Overview
 
-Open Claude is a powerful, open-source chat interface inspired by Anthropic's Claude. It provides a clean, intuitive UI for interacting with multiple Large Language Models (LLMs) including OpenAI GPT models, Google Gemini, Groq, and local models via Ollama or LM Studio.
-
-### 🌟 Highlights
-
-- **🔬 Deep Research Scientist Mode**: Autonomous iterative research loop for professional multi-page reports
-- **🧠 Advanced Thinking UI**: Unique collapsible thinking/reasoning display showing AI's thought process
-- **🎨 Premium Design**: Modern, responsive interface with dark/light mode
-- **🔄 Multi-Provider**: Switch between OpenAI, Groq, Gemini, Ollama, and LM Studio
-- **🔍 Intelligent Web Search**: Integrated Tavily search with dynamic tool selection
-- **📦 Artifacts**: Preview HTML, React, SVG, and Research Papers in a dedicated panel
-- **💬 Chat History**: Multiple conversations with persistent local storage
-- **🎭 Markdown Support**: Full GitHub-flavored markdown with syntax highlighting and automatic citations
+**Open Claude** is a state-of-the-art, open-source AI desktop workspace inspired by Anthropic's Claude 3.7 interface. Built for power users, developers, and researchers, Open Claude unifies top cloud models (**Google Gemini**, **Groq**, **OpenAI**) and local offline LLMs (**Ollama**, **LM Studio**) into a unified, human-centered UI.
 
 ---
 
-## ✨ Features
+## 📸 Interface Showcase
 
-### 🧠 Thinking/Reasoning Mode
+### 1. Main Workspace & Time-Aware Interface
+> Featuring dynamic context greetings, integrated prompt suggestions, live vision capability badges, web search toggle, and instant camera / file upload.
 
-A groundbreaking feature that displays the AI's internal reasoning process:
+<div align="center">
+  <img src="screenshots/open_claude_workspace.jpg" alt="Open Claude Main Workspace" width="900" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.3);" />
+</div>
 
-- **Collapsible Sections**: View or hide the model's thought process
-- **Token Tracking**: See how many tokens were used for thinking
-- **Duration Display**: Track how long the model spent reasoning
-- **Streaming Support**: Watch the AI think in real-time
-- **Premium Design**: Beautiful gradient UI with smooth animations
+### 2. Interactive Split-Screen Artifacts Sandbox
+> Run complete HTML5 games, Canvas applications, interactive React components, and deep research papers side-by-side with real-time code inspection and execution.
 
-### 🤖 Multi-Provider Support
+<div align="center">
+  <img src="screenshots/open_claude_artifacts_preview.jpg" alt="Interactive Artifacts Runner (Flappy Bird Deluxe Game)" width="900" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.3);" />
+</div>
 
-| Provider | Typical Models | Hosted | Notes |
-|----------|----------------|--------|-------|
-| **OpenAI** | GPT-5.2, GPT-5, GPT-4.x | Cloud | Best general purpose + tools |
-| **Google Gemini** | Gemini 3 Pro / Flash, 2.5 Flash / Pro | Cloud | Excellent multimodal, long context |
-| **Groq** | llama3, mixtral, gemma, openai/gpt-oss | Cloud / optimized servers | Ultra-fast inference |
-| **Ollama** | LLaMA, Gemma, Qwen, Mistral, Mixtral, CodeLlama | Local | Self-hosted open models |
-| **LM Studio** | Any local GGUF model | Local | Local hosting with OpenAI-style API |
+---
 
-### 🎨 User Interface
+## ✨ Key Features
 
-- **Clean Design**: Inspired by Claude's minimalist aesthetic
-- **Dark/Light Mode**: Automatic theme switching based on system preferences
-- **Responsive**: Works seamlessly on desktop and mobile
-- **Syntax Highlighting**: Beautiful code blocks with react-syntax-highlighter
-- **Artifact Panel**: Side-by-side code preview for HTML, React, and SVG
+### 📷 Dynamic Multimodal & Webcam Capture
+- **Live Camera Viewfinder**: Tap the camera icon (📷) to open a built-in webcam capture modal with live viewfinder, front/back camera flipping, and shutter review ("Use Photo" / "Retake").
+- **API-Level Dynamic Vision Detection**: No hardcoded lists — Open Claude dynamically inspects provider API manifests and metadata (e.g. Ollama `details.families`, Gemini multimodal descriptions, LM Studio architectures).
+- **Intelligent Auto-Switching**: When you capture or upload a picture while on a text-only model (e.g., Groq `llama-3.3-70b-versatile`), Open Claude automatically switches to the provider's top vision model (`llama-3.2-11b-vision-preview` / `gpt-4o`).
+- **Clipboard Paste (`Ctrl+V`)**: Paste images or screenshots directly into the prompt box.
 
-### 🔍 Web Search Integration
+---
 
-- Powered by Tavily API
-- Real-time web search results
-- Context-aware responses with up-to-date information
+### 📦 Universal Resilient Artifact Runner
+- **Interactive Sandbox**: Automatically renders and runs:
+  - **HTML5 & Canvas Games**: Full game loops, Web Audio API procedural sound synthesis, and local storage state (e.g. Flappy Bird Deluxe).
+  - **React / JSX Applications**: Transpiled on-the-fly via Babel Standalone with support for React Hooks, Lucide Icons, and Recharts.
+  - **SVG Graphics**: Visual vector rendering.
+  - **Research Papers**: Formal academic format with one-click PDF download.
+- **Multi-CDN Resilience**: Sequential fallback (unpkg $\rightarrow$ Cloudflare CDNJS $\rightarrow$ jsDelivr) prevents white screens or failures if any individual CDN is blocked or rate-limited.
+- **Universal Tag Parsing**: Flexibly parses `<antArtifact>` tags and code blocks from Claude, Gemini, Groq, OpenAI, and Ollama in any attribute order or format.
+
+---
+
+### 🧠 Universal CoT Thinking & Reasoning Stream
+- **Live Streamed Thoughts**: Real-time token-by-token rendering of `<think>` and `<thinking>` tags alongside native API reasoning fields (`reasoning_content` / `reasoning`).
+- **DeepSeek R1 on Groq & Ollama**: Seamlessly view DeepSeek's step-by-step mathematical and logical reasoning.
+- **Metrics & Tokens**: Displays total reasoning token count and elapsed thinking duration.
+- **Collapsible Design**: Elegant gradient accordion to expand or collapse internal monologue.
+
+---
+
+### 🔬 Deep Research Scientist Mode
+- **Autonomous Multi-Step Loop**: Type `deep research: <topic>` to trigger an autonomous research agent that formulates sub-queries, queries real-time web databases, gathers evidence, and writes comprehensive multi-page whitepapers.
+- **Formal PDF Export**: Export compiled research reports to PDF with structured abstracts, methodology, analysis, and bibliography.
+- **Verifiable Citations**: Automatic source citation links with verified publisher logos and favicons.
+
+---
+
+### 🌐 Intelligent Real-Time Web Search
+- **Tavily API Integration**: Search the live web for breaking news, current events, and documentation.
+- **Smart Query Reformulation**: Contextually optimizes search keywords and strips unnecessary prefixes.
+- **Publisher Logos**: Automatically fetches high-resolution publisher favicons for all referenced sources.
+
+---
+
+## 🤖 Supported Providers & Models
+
+| Provider | Supported Models | Capabilities | Vision |
+| :--- | :--- | :--- | :---: |
+| **Google Gemini** | `gemini-3.7-flash`, `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.0-flash` | Multimodal, Long Context, Search | ✅ |
+| **Groq Cloud** | `llama-3.3-70b-versatile`, `llama-3.2-11b-vision-preview`, `llama-3.2-90b-vision-preview`, `deepseek-r1-distill-llama-70b` | Ultra-fast inference, Real-time reasoning | ✅ |
+| **OpenAI** | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3-mini`, `gpt-4-turbo` | General purpose, Function calling, Vision | ✅ |
+| **Ollama (Local)** | `llama3.2-vision`, `qwen2.5-vl`, `deepseek-r1`, `llava`, `mistral`, `gemma2` | Private, 100% offline, GPU-accelerated | ✅ |
+| **LM Studio** | Any GGUF model (`qwen2-vl`, `minicpm-v`, `phi-3.5`) | Local inference with OpenAI-compatible API | ✅ |
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 1. Prerequisites
+- **Node.js** 18.0 or higher ([Download Node.js](https://nodejs.org/))
+- **npm** or **pnpm** or **yarn**
+- **Git** ([Download Git](https://git-scm.com/))
 
-Before you begin, ensure you have:
-
-- **Node.js** 18.0 or higher ([Download](https://nodejs.org/))
-- **npm** (comes with Node.js) or **yarn**
-- **Git** ([Download](https://git-scm.com/))
-
-### Installation
-
-1. **Clone the repository**
+### 2. Installation
 
 ```bash
+# 1. Clone the repository
 git clone https://github.com/Damienchakma/Open-claude.git
 cd Open-claude
-```
 
-2. **Install dependencies**
-
-```bash
+# 2. Install dependencies
 npm install
-```
 
-3. **Start the development server**
-
-```bash
+# 3. Start development server
 npm run dev
 ```
 
-4. **Open in your browser**
-
-Navigate to `http://localhost:5173`
-
-That's it! 🎉 The application is now running.
+Open your browser and navigate to **`http://localhost:5173`**.
 
 ---
 
-## ⚙️ Configuration
+## ⚙️ Configuration & API Keys
 
-### Getting API Keys
+Click the **Settings** icon (⚙️) in the sidebar or top bar to add your keys:
 
-Open Claude requires API keys for cloud providers. Here's how to get them:
+- **Google Gemini**: Get key from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- **Groq Cloud**: Get key from [Groq Console](https://console.groq.com/keys)
+- **OpenAI**: Get key from [OpenAI Platform](https://platform.openai.com/api-keys)
+- **Tavily (Web Search)**: Get key from [Tavily Dashboard](https://tavily.com/)
 
-#### OpenAI API Key
-1. Visit [OpenAI Platform](https://platform.openai.com/)
-2. Sign up or log in
-3. Go to **API Keys** section
-4. Click **Create new secret key**
-5. Copy and save the key (you won't see it again!)
-
-#### Google Gemini API Key
-1. Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Sign in with your Google account
-3. Click **Create API Key**
-4. Copy the generated key
-
-#### Groq API Key
-1. Visit [Groq Console](https://console.groq.com/)
-2. Create an account or log in
-3. Navigate to **API Keys**
-4. Generate a new API key
-
-#### Tavily API Key (Optional - for web search)
-1. Visit [Tavily](https://tavily.com/)
-2. Sign up for an account
-3. Get your API key from the dashboard
-
-### Setting Up API Keys in the App
-
-1. Click the **Settings** icon (gear) in the sidebar
-2. Enter your API keys in the respective fields
-3. Click **Save**
-4. Your keys are stored **locally in your browser** (never sent to any server)
-
-### Using Local Models (No API Key Required)
-
-#### Ollama Setup
-1. Install Ollama from [ollama.ai](https://ollama.ai/)
-2. Pull a model: `ollama pull llama2`
-3. Ollama runs on `localhost:11434` by default
-4. Select Ollama in the model dropdown
-
-#### LM Studio Setup
-1. Install [LM Studio](https://lmstudio.ai/)
-2. Download and load a model
-3. Start the local server (port 1234)
-4. Select LM Studio in the model dropdown
+> [!NOTE]
+> All API keys and chat histories are stored **100% locally in your browser's `localStorage`**. Your keys are never sent to any third-party intermediary servers.
 
 ---
 
-## 🎯 Usage
+## ⌨️ Keyboard Shortcuts
 
-### Basic Chat
-
-1. Select a provider and model from the dropdown
-2. Type your message in the input field
-3. Press **Enter** or click **Send**
-4. View the AI's response
-
-### Using Web Search
-
-1. Click the **Globe** icon to enable web search
-2. Your queries will include real-time web results
-3. The AI will provide context-aware answers with current information
-
-### Viewing Artifacts
-
-When the AI generates code (HTML, React, SVG):
-1. An artifact card appears in the chat
-2. Click the card to open the preview panel
-3. Toggle between **Preview** and **Code** views
-4. Copy code with the copy button
-
-### 🔬 Deep Research Scientist Mode
-
-The flagship feature for professional investigation:
-
-1.  **Autonomous Loop**: The agent decides what to search, evaluates results, and digs deeper until requirements are met.
-2.  **3-Minute Minimum**: Ensures high-quality, non-trivial research outputs.
-3.  **PDF-Ready Reports**: Generates formal research papers with Abstracts, Methodology, and References.
-4.  **Automatic Citations**: All claims are cited to verifiable sources.
-
-### Managing Chats
-
-- **New Chat**: Click the **New Chat** button in the sidebar
-- **Switch Chats**: Click on any chat in the history
-- **Delete Chat**: Hover over a chat and click the trash icon
-- **Persistence**: Your chats and artifacts are saved to your browser's local storage and isolated per session.
-
-### Viewing AI Thinking Process
-
-For models that support reasoning (like OpenAI o1):
-1. The thinking section appears above the response
-2. Click to expand/collapse
-3. View token count and duration
-4. See the AI's step-by-step reasoning
+| Shortcut | Action |
+| :--- | :--- |
+| `Enter` | Send message |
+| `Shift + Enter` | Insert new line in prompt |
+| `Ctrl + V` | Paste image directly into prompt |
+| `Space` / `↑` | Jump / flap in game artifacts (e.g. Flappy Bird) |
+| `P` | Pause / resume interactive game artifacts |
 
 ---
 
-## 🛠️ Development
+## 🛠️ Tech Stack
 
-### Project Structure
-
-```
-Open-claude/
-├── src/
-│   ├── components/          # React components
-│   │   ├── ArtifactPanel.jsx      # Code & Research preview panel
-│   │   ├── BuildMode.jsx          # AI App Builder mode
-│   │   ├── ChatMessage.jsx        # Individual message display
-│   │   ├── ChatMode.jsx           # Main chat interface logic
-│   │   ├── CitationDisplay.jsx    # Research source citations
-│   │   ├── CodeMode.jsx           # Dedicated code editor
-│   │   ├── ModeSwitcher.jsx       # Switch between Chat, Build, Code
-│   │   ├── SettingsModal.jsx      # Provider & Model configuration
-│   │   ├── ThinkingDisplay.jsx    # Reasoning process UI
-│   │   └── Workbench/             # Build mode development area
-│   ├── context/             # Global state management
-│   │   ├── ChatContext.jsx        # Core chat & artifacts state
-│   │   ├── ModeContext.jsx        # Application mode state
-│   │   └── BuildContext.jsx       # Build mode state
-│   ├── lib/                 # Core logic & tools
-│   │   ├── llm/                   # LLM factory and clients
-│   │   ├── IntelligentSearchTool.js # Deep Research & Web Search
-│   │   └── BoltArtifactParser.js   # Advanced artifact extraction
-│   ├── App.jsx              # Main app entry layout
-│   ├── main.jsx             # React mounting point
-│   └── index.css            # Global design system
-├── public/                  # Static assets
-├── index.html               # Main entry template
-├── package.json             # Dependencies
-└── tailwind.config.js       # UI design tokens
-```
-
-### Tech Stack
-
-- **Frontend Framework**: React 18.2
-- **Build Tool**: Vite 5.1
-- **Styling**: Tailwind CSS + Custom CSS Variables
-- **Markdown**: react-markdown + remark-gfm
-- **Syntax Highlighting**: react-syntax-highlighter
+- **Core**: React 18, Vite 5, Vanilla JavaScript (ES2024)
+- **Styling**: Tailwind CSS + Custom Humanist Theme Tokens
+- **Markdown & Code**: `react-markdown`, `remark-gfm`, `rehype-raw`, `react-syntax-highlighter`
 - **Icons**: Lucide React
-- **Animations**: Framer Motion
-
-### Available Scripts
-
-```bash
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
-
-# Lint code
-npm run lint
-```
-
-### Building for Production
-
-```bash
-npm run build
-```
-
-This creates an optimized production build in the `dist/` folder.
-
-### Environment Variables
-
-The app doesn't use `.env` files. All settings are stored in browser localStorage for security.
-
----
-
-## 🎨 Customization
-
-### Changing Theme Colors
-
-Edit `src/index.css` to customize the color scheme:
-
-```css
-:root {
-  --accent: #d97757;        /* Primary accent color */
-  --bg-primary: #FFFFFF;    /* Main background */
-  --text-primary: #2F2F2F;  /* Main text color */
-  /* ... more variables */
-}
-```
-
-### Adding New LLM Providers
-
-1. Create a new client class in `src/lib/llm/clients.js`
-2. Extend `BaseClient` and implement `streamChat()`
-3. Add to `LLMFactory.getClient()` switch case
-4. Update `ModelService.js` to fetch available models
-5. Add UI elements in `SettingsModal.jsx`
+- **PDF Generation**: `jspdf`, `html2canvas`
+- **In-Browser Transpilation**: Babel Standalone (`@babel/standalone`)
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Here's how you can help:
+Contributions, issues, and feature requests are welcome!
 
-### Reporting Bugs
-
-1. Check if the bug has already been reported in [Issues](https://github.com/Damienchakma/Open-claude/issues)
-2. Create a new issue with:
-   - Clear title and description
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Screenshots if applicable
-
-### Suggesting Features
-
-1. Open an issue with the `enhancement` label
-2. Describe the feature and why it would be useful
-3. Provide examples or mockups if possible
-
-### Pull Requests
-
-1. Fork the repository
-2. Create a new branch: `git checkout -b feature/your-feature-name`
-3. Make your changes
-4. Test thoroughly
-5. Commit: `git commit -m "Add: your feature description"`
-6. Push: `git push origin feature/your-feature-name`
-7. Open a Pull Request
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ---
 
 ## 📝 License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- Inspired by [Anthropic's Claude](https://www.anthropic.com/claude) interface
-- Built with modern web technologies
-- Community-driven development
-
----
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/Damienchakma/Open-claude/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Damienchakma/Open-claude/discussions)
-
----
-
-## ⭐ Star History
-
-If you find this project useful, please consider giving it a star! ⭐
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
 
 ---
 
 <div align="center">
 
-Owner: [Damien Chakma](https://github.com/Damienchakma)
+Built with ❤️ by [Damien Chakma](https://github.com/Damienchakma)
 
-**[⬆ back to top](#-open-claude)**
+**[⬆ Back to Top](#-open-claude)**
 
 </div>
