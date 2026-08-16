@@ -1,37 +1,55 @@
 // Model Discovery Service - Dynamic capability detection
-// NO HARDCODED MODEL IDS - Uses pattern matching and API detection
+// Dynamically extracts modalities and capabilities directly from provider API metadata
 
-// Vision detection patterns - detect by model name patterns, NOT specific IDs
+// Dynamic semantic pattern matching for models when API metadata needs augmentation
 const VISION_PATTERNS = {
-    // Positive patterns - if model name contains these, it likely supports vision
     positive: [
-        'vision',          // explicit vision models
-        'gpt-4o',          // OpenAI multimodal
-        'gpt-4-turbo',     // GPT-4 Turbo with vision
-        'claude-3',        // All Claude 3+ support vision
-        'claude-4',        // All Claude 4+ support vision
-        'claude-sonnet',   // Claude Sonnet models
-        'claude-opus',     // Claude Opus models
-        'claude-haiku',    // Claude Haiku models
-        'gemini-1.5',      // Gemini 1.5 models
-        'gemini-2',        // Gemini 2.0 models
-        'gemini-pro-vision', // Explicit vision
-        'llava',           // LLaVA models
+        'vision',            // explicit vision
+        '-vl',               // Qwen2-VL, Qwen2.5-VL, InternVL
+        '_vl',
+        'vl-',
+        'gpt-4o',            // OpenAI multimodal (gpt-4o, gpt-4o-mini)
+        'gpt-4.5',           // GPT-4.5
+        'gpt-4-turbo',       // GPT-4 Turbo with vision
+        'o1',                // OpenAI o1 with vision
+        'claude-3',          // Claude 3 models
+        'claude-4',          // Claude 4 models
+        'claude-sonnet',
+        'claude-opus',
+        'claude-haiku',
+        'gemini',            // All Gemini chat models are natively multimodal
+        'llava',             // LLaVA models
+        'bakllava',          // BakLLaVA
         'llama-3.2.*vision', // Llama 3.2 vision
-        'llama-4',         // Llama 4 is multimodal
-        'pixtral',         // Mistral's vision model
-        'multimodal',      // Generic multimodal
+        'llama3.2.*vision',
+        'llama-4',           // Llama 4 multimodal
+        'pixtral',           // Mistral Pixtral
+        'minicpm-v',         // MiniCPM-V
+        'moondream',         // Moondream
+        'gemma-3',           // Gemma 3 multimodal
+        'gemma-4',
+        'qwen2-vl',          // Qwen2-VL
+        'qwen2.5-vl',        // Qwen2.5-VL
+        'qwen-vl',
+        'qwen-3.6',          // Qwen 3.6 multimodal
+        'granite.*vision',   // IBM Granite vision
+        'cogvlm',            // CogVLM
+        'internvl',          // InternVL
+        'phi-3-vision',      // Phi-3 Vision
+        'phi-3.5-vision',    // Phi-3.5 Vision
+        'phi-4.*multimodal', // Phi-4 Multimodal
+        'multimodal',        // Generic multimodal
+        'omni'               // Omni models
     ],
-    // Negative patterns - these definitely DON'T support vision
     negative: [
-        'o1-',             // o1 reasoning models (no vision)
-        'o3-',             // o3 reasoning models (no vision)
-        'gpt-3.5',         // GPT-3.5 (no vision)
-        'text-',           // Text-only models
-        'embed',           // Embedding models
-        'whisper',         // Audio models
-        'tts',             // Text-to-speech
-        'dall-e',          // Image generation, not input
+        'text-embedding',
+        'embed',
+        'whisper',
+        'tts',
+        'dall-e',
+        'imagen',
+        'rerank',
+        'moderation'
     ]
 };
 
@@ -40,6 +58,7 @@ const AUDIO_PATTERNS = {
     positive: [
         'gemini-1.5',      // Gemini 1.5 supports audio
         'gemini-2',        // Gemini 2.0 supports audio
+        'gemini-2.5',
         'whisper',         // Whisper audio models
         'audio',           // Generic audio
     ],
@@ -51,6 +70,7 @@ const VIDEO_PATTERNS = {
     positive: [
         'gemini-1.5-pro',  // Gemini Pro supports video
         'gemini-2',        // Gemini 2.0 supports video
+        'gemini-2.5',
         'video',           // Generic video
     ],
     negative: []
@@ -58,7 +78,6 @@ const VIDEO_PATTERNS = {
 
 /**
  * Dynamic capability detection using pattern matching
- * Works with ANY model, including future ones
  */
 function detectCapabilityFromName(modelId, patterns) {
     if (!modelId) return false;
@@ -68,7 +87,6 @@ function detectCapabilityFromName(modelId, patterns) {
     // Check negative patterns first
     for (const pattern of patterns.negative) {
         if (pattern.includes('*')) {
-            // Regex pattern
             const regex = new RegExp(pattern.replace('*', '.*'), 'i');
             if (regex.test(lowerModelId)) return false;
         } else if (lowerModelId.includes(pattern.toLowerCase())) {
@@ -79,7 +97,6 @@ function detectCapabilityFromName(modelId, patterns) {
     // Check positive patterns
     for (const pattern of patterns.positive) {
         if (pattern.includes('*')) {
-            // Regex pattern
             const regex = new RegExp(pattern.replace('*', '.*'), 'i');
             if (regex.test(lowerModelId)) return true;
         } else if (lowerModelId.includes(pattern.toLowerCase())) {
@@ -91,17 +108,55 @@ function detectCapabilityFromName(modelId, patterns) {
 }
 
 /**
- * Get model capabilities dynamically
- * @param {string} modelId - The model identifier
- * @returns {Object} Capabilities object
+ * Extract capabilities directly from provider API response metadata
  */
-export function getModelCapabilities(modelId) {
-    if (!modelId) {
-        return { text: true, image: false, audio: false, video: false };
+export function extractCapabilitiesFromApiResponse(rawModel, provider) {
+    if (!rawModel) return { text: true, image: false, audio: false, video: false };
+
+    const modelId = typeof rawModel === 'string' ? rawModel : (rawModel.id || rawModel.name || '');
+    const lowerId = modelId.toLowerCase();
+
+    // 1. Ollama-specific API metadata inspection (families array / architecture)
+    if (provider === 'ollama') {
+        const details = rawModel.details || {};
+        const families = Array.isArray(details.families) ? details.families.map(f => String(f).toLowerCase()) : [];
+        const family = String(details.family || '').toLowerCase();
+        
+        const hasVisionFamily = families.some(f => 
+            f.includes('clip') || f.includes('vision') || f.includes('mllama') || f.includes('qwen2vl') || f.includes('minicpm')
+        ) || family.includes('clip') || family.includes('mllama') || family.includes('vision') || family.includes('qwen2vl');
+
+        if (hasVisionFamily) {
+            return { text: true, image: true, audio: false, video: false };
+        }
     }
 
+    // 2. Gemini-specific API metadata inspection (description & supported methods)
+    if (provider === 'gemini') {
+        const desc = String(rawModel.description || '').toLowerCase();
+        const isMultimodal = desc.includes('multimodal') || desc.includes('image') || desc.includes('vision') || lowerId.includes('gemini');
+        const hasAudio = desc.includes('audio') || lowerId.includes('gemini-1.5') || lowerId.includes('gemini-2') || lowerId.includes('gemini-2.5');
+        const hasVideo = desc.includes('video') || lowerId.includes('pro') || lowerId.includes('gemini-2') || lowerId.includes('gemini-2.5');
+        return {
+            text: true,
+            image: isMultimodal,
+            audio: hasAudio,
+            video: hasVideo
+        };
+    }
+
+    // 3. LM Studio metadata inspection
+    if (provider === 'lmstudio') {
+        const caps = rawModel.capabilities || rawModel.type || rawModel.arch || '';
+        const capsStr = typeof caps === 'string' ? caps.toLowerCase() : JSON.stringify(caps).toLowerCase();
+        if (capsStr.includes('vision') || capsStr.includes('image') || capsStr.includes('multimodal') || capsStr.includes('clip')) {
+            return { text: true, image: true, audio: false, video: false };
+        }
+    }
+
+    // 4. Default: Dynamic detection from model identifier
     return {
-        text: true, // All models support text
+        text: true,
         image: detectCapabilityFromName(modelId, VISION_PATTERNS),
         audio: detectCapabilityFromName(modelId, AUDIO_PATTERNS),
         video: detectCapabilityFromName(modelId, VIDEO_PATTERNS)
@@ -109,31 +164,49 @@ export function getModelCapabilities(modelId) {
 }
 
 /**
+ * Get model capabilities dynamically
+ * @param {string|object} modelOrId - The model identifier or raw model object
+ * @param {string} provider - The model provider
+ * @returns {Object} Capabilities object
+ */
+export function getModelCapabilities(modelOrId, provider = null) {
+    if (!modelOrId) {
+        return { text: true, image: false, audio: false, video: false };
+    }
+
+    if (typeof modelOrId === 'object') {
+        return extractCapabilitiesFromApiResponse(modelOrId, provider || modelOrId.provider);
+    }
+
+    return extractCapabilitiesFromApiResponse({ id: modelOrId }, provider);
+}
+
+/**
  * Check if model supports images
  */
-export function supportsImage(modelId) {
-    return getModelCapabilities(modelId).image;
+export function supportsImage(modelId, provider = null) {
+    return getModelCapabilities(modelId, provider).image;
 }
 
 /**
  * Check if model supports audio
  */
-export function supportsAudio(modelId) {
-    return getModelCapabilities(modelId).audio;
+export function supportsAudio(modelId, provider = null) {
+    return getModelCapabilities(modelId, provider).audio;
 }
 
 /**
  * Check if model supports video
  */
-export function supportsVideo(modelId) {
-    return getModelCapabilities(modelId).video;
+export function supportsVideo(modelId, provider = null) {
+    return getModelCapabilities(modelId, provider).video;
 }
 
 /**
  * Get human-readable capability label
  */
-export function getModelCapabilityLabel(modelId) {
-    const caps = getModelCapabilities(modelId);
+export function getModelCapabilityLabel(modelId, provider = null) {
+    const caps = getModelCapabilities(modelId, provider);
     const labels = [];
     if (caps.image) labels.push('📷 Images');
     if (caps.audio) labels.push('🎤 Audio');
@@ -272,8 +345,8 @@ export class ModelService {
                     name: model.id,
                     provider: 'openai',
                     owned_by: model.owned_by,
-                    // Dynamic capability detection
-                    capabilities: getModelCapabilities(model.id)
+                    // Dynamic capability detection from API response & architecture
+                    capabilities: getModelCapabilities(model, 'openai')
                 }))
                 .sort((a, b) => a.id.localeCompare(b.id));
 
@@ -287,11 +360,11 @@ export class ModelService {
             console.error('Error fetching OpenAI models:', error);
             // Return fallback list
             return [
-                { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', capabilities: getModelCapabilities('gpt-4o') },
-                { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', capabilities: getModelCapabilities('gpt-4o-mini') },
-                { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'openai', capabilities: getModelCapabilities('gpt-4-turbo') },
-                { id: 'gpt-4', name: 'GPT-4', provider: 'openai', capabilities: getModelCapabilities('gpt-4') },
-                { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai', capabilities: getModelCapabilities('gpt-3.5-turbo') },
+                { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', capabilities: getModelCapabilities('gpt-4o', 'openai') },
+                { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', capabilities: getModelCapabilities('gpt-4o-mini', 'openai') },
+                { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'openai', capabilities: getModelCapabilities('gpt-4-turbo', 'openai') },
+                { id: 'gpt-4', name: 'GPT-4', provider: 'openai', capabilities: getModelCapabilities('gpt-4', 'openai') },
+                { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'openai', capabilities: getModelCapabilities('gpt-3.5-turbo', 'openai') },
             ];
         }
     }
@@ -316,25 +389,51 @@ export class ModelService {
             }
 
             const data = await response.json();
-            const models = data.data.map(model => ({
-                id: model.id,
-                name: model.id,
-                provider: 'groq',
-                contextWindow: model.context_window || 8192,
-                owned_by: model.owned_by,
-                // Dynamic capability detection!
-                capabilities: getModelCapabilities(model.id)
-            }));
+            const models = (data.data || [])
+                .filter(model => {
+                    const id = (model.id || '').toLowerCase();
+                    return !id.includes('whisper') &&
+                           !id.includes('guard') &&
+                           !id.includes('embed') &&
+                           !id.includes('tts') &&
+                           !id.includes('audio');
+                })
+                .map(model => ({
+                    id: model.id,
+                    name: model.id,
+                    provider: 'groq',
+                    contextWindow: model.context_window || 8192,
+                    owned_by: model.owned_by,
+                    // Dynamic capability detection directly from API model data!
+                    capabilities: getModelCapabilities(model, 'groq')
+                }))
+                .sort((a, b) => a.id.localeCompare(b.id));
+
+            const finalModels = models.length > 0 ? models : [
+                { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
+                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
+                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
+                { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
+                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
+                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') }
+            ];
 
             this.cache.groq = {
-                models,
+                models: finalModels,
                 timestamp: Date.now()
             };
 
-            return models;
+            return finalModels;
         } catch (error) {
             console.error('Error fetching Groq models:', error);
-            return [];
+            return [
+                { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
+                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
+                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
+                { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
+                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill Llama 70B', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
+                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') }
+            ];
         }
     }
 
@@ -358,8 +457,8 @@ export class ModelService {
                 provider: 'ollama',
                 size: model.size,
                 modified: model.modified_at,
-                // Dynamic capability detection!
-                capabilities: getModelCapabilities(model.name)
+                // Dynamic capability detection directly from Ollama family/manifest!
+                capabilities: getModelCapabilities(model, 'ollama')
             }));
 
             this.cache.ollama = {
@@ -393,8 +492,8 @@ export class ModelService {
                 name: model.id,
                 provider: 'lmstudio',
                 owned_by: model.owned_by,
-                // Dynamic capability detection!
-                capabilities: getModelCapabilities(model.id)
+                // Dynamic capability detection from LM Studio model metadata!
+                capabilities: getModelCapabilities(model, 'lmstudio')
             }));
 
             this.cache.lmstudio = {
@@ -431,8 +530,19 @@ export class ModelService {
 
             const models = (data.models || [])
                 .filter(model => {
+                    const id = (model.name?.replace(/^models\//, '') || model.id || '').toLowerCase();
                     const methods = model.supportedGenerationMethods || [];
-                    return methods.includes('generateContent') || methods.includes('streamGenerateContent');
+                    const supportsGenerate = methods.includes('generateContent') || methods.includes('streamGenerateContent');
+                    
+                    // Filter to actual chat/multiturn-capable models
+                    return supportsGenerate &&
+                        !id.includes('embedding') &&
+                        !id.includes('aqa') &&
+                        !id.includes('imagen') &&
+                        !id.includes('whisper') &&
+                        !id.includes('tts') &&
+                        !id.includes('learnlm') &&
+                        !id.includes('antigravity');
                 })
                 .map(model => {
                     const id = model.name?.replace(/^models\//, '') || model.id;
@@ -441,21 +551,34 @@ export class ModelService {
                         name: model.displayName || id,
                         provider: 'gemini',
                         contextWindow: model.inputTokenLimit,
-                        capabilities: getModelCapabilities(id)
+                        // Dynamic capability detection from Gemini API description & methods!
+                        capabilities: getModelCapabilities(model, 'gemini')
                     };
                 })
                 .filter(model => model.id)
                 .sort((a, b) => a.id.localeCompare(b.id));
 
+            const finalModels = models.length > 0 ? models : [
+                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-flash', 'gemini') },
+                { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.0-flash', 'gemini') },
+                { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-flash', 'gemini') },
+                { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-pro', 'gemini') }
+            ];
+
             this.cache.gemini = {
-                models,
+                models: finalModels,
                 timestamp: Date.now()
             };
 
-            return models;
+            return finalModels;
         } catch (error) {
             console.error('Error fetching Gemini models:', error);
-            return [];
+            return [
+                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-flash', 'gemini') },
+                { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.0-flash', 'gemini') },
+                { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-flash', 'gemini') },
+                { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-pro', 'gemini') }
+            ];
         }
     }
 

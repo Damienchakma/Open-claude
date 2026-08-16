@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Key, Globe, RefreshCw, ChevronDown, Check, Cpu, Wifi, WifiOff, User } from 'lucide-react';
+import { X, Key, Globe, RefreshCw, ChevronDown, Check, Cpu, Wifi, WifiOff, User, Sparkles, Terminal, Sliders, RotateCcw } from 'lucide-react';
 import { useChat } from '../context/ChatContext';
 
 export function SettingsModal({ isOpen, onClose }) {
@@ -14,18 +14,22 @@ export function SettingsModal({ isOpen, onClose }) {
         isLoadingModels,
         refreshModels,
         userName,
-        setUserName
+        setUserName,
+        customSystemPrompt,
+        setCustomSystemPrompt
     } = useChat();
 
     const [showModelDropdown, setShowModelDropdown] = useState(false);
     const [editingName, setEditingName] = useState('');
+    const [editingPrompt, setEditingPrompt] = useState('');
 
-    // Sync editingName when modal opens
+    // Sync editing fields when modal opens
     useEffect(() => {
         if (isOpen) {
             setEditingName(userName || '');
+            setEditingPrompt(customSystemPrompt || '');
         }
-    }, [isOpen, userName]);
+    }, [isOpen, userName, customSystemPrompt]);
 
     if (!isOpen) return null;
 
@@ -45,6 +49,39 @@ export function SettingsModal({ isOpen, onClose }) {
         if (editingName.trim() !== userName) {
             setUserName(editingName.trim());
         }
+    };
+
+    const handleSavePrompt = (val) => {
+        const valueToSave = val !== undefined ? val : editingPrompt;
+        setCustomSystemPrompt(valueToSave);
+    };
+
+    const PROMPT_PRESETS = [
+        {
+            name: 'Default',
+            icon: '✨',
+            prompt: ''
+        },
+        {
+            name: 'Senior Architect',
+            icon: '💻',
+            prompt: 'You are a senior software architect. Provide clean, modular, and production-ready code with concise explanations. Point out potential edge cases and performance considerations.'
+        },
+        {
+            name: 'Deep Researcher',
+            icon: '🔬',
+            prompt: 'You are an objective, thorough research scientist. Provide detailed, well-structured analytical breakdowns with clear citations, nuanced arguments, and critical evaluations.'
+        },
+        {
+            name: 'Concise & Fast',
+            icon: '⚡',
+            prompt: 'Be extremely concise, direct, and factual. Skip conversational fluff and pleasantries. Use bullet points and direct solutions.'
+        }
+    ];
+
+    const applyPreset = (presetPrompt) => {
+        setEditingPrompt(presetPrompt);
+        handleSavePrompt(presetPrompt);
     };
 
     return (
@@ -158,9 +195,14 @@ export function SettingsModal({ isOpen, onClose }) {
                             <div className="relative">
                                 <button
                                     onClick={() => setShowModelDropdown(!showModelDropdown)}
-                                    className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] flex items-center justify-between hover:border-[var(--accent)] focus:border-[var(--accent)] transition-colors">
-                                    <span className="text-[var(--text-primary)]">
-                                        {selectedModelObj ? selectedModelObj.name : 'Select a model'}
+                                    className="w-full px-4 py-3 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] flex items-center justify-between hover:border-[var(--accent)] focus:border-[var(--accent)] transition-colors cursor-pointer">
+                                    <span className="text-[var(--text-primary)] flex items-center gap-2">
+                                        <span>{selectedModelObj ? selectedModelObj.name : 'Select a model'}</span>
+                                        {selectedModelObj?.capabilities?.image && (
+                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                                📷 Vision
+                                            </span>
+                                        )}
                                     </span>
                                     <ChevronDown size={20} className="text-[var(--text-secondary)]" />
                                 </button>
@@ -174,13 +216,20 @@ export function SettingsModal({ isOpen, onClose }) {
                                                     updateModel(model.id);
                                                     setShowModelDropdown(false);
                                                 }}
-                                                className={`w-full px-4 py-3 text-left hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between ${model.id === selectedModel ? 'bg-[var(--accent)]/10' : ''
+                                                className={`w-full px-4 py-3 text-left hover:bg-[var(--bg-tertiary)] transition-colors flex items-center justify-between cursor-pointer ${model.id === selectedModel ? 'bg-[var(--accent)]/10' : ''
                                                     }`}
                                             >
                                                 <div>
-                                                    <div className="text-sm font-medium text-[var(--text-primary)]">{model.name}</div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-medium text-[var(--text-primary)]">{model.name}</span>
+                                                        {model.capabilities?.image && (
+                                                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                                                📷 Vision
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {model.contextWindow && (
-                                                        <div className="text-xs text-[var(--text-secondary)]">
+                                                        <div className="text-xs text-[var(--text-secondary)] mt-0.5">
                                                             Context: {(model.contextWindow / 1000).toFixed(0)}K tokens
                                                         </div>
                                                     )}
@@ -203,6 +252,62 @@ export function SettingsModal({ isOpen, onClose }) {
                                 </p>
                             </div>
                         )}
+                    </div>
+
+                    {/* Custom System Prompt Section */}
+                    <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+                        <div className="flex items-center justify-between">
+                            <label className="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
+                                <Terminal size={16} className="text-[var(--accent)]" />
+                                Custom System Prompt
+                            </label>
+                            {editingPrompt && (
+                                <button
+                                    onClick={() => applyPreset('')}
+                                    className="flex items-center gap-1 text-xs text-[var(--text-tertiary)] hover:text-[var(--accent)] transition-colors cursor-pointer"
+                                    title="Reset to default system prompt"
+                                >
+                                    <RotateCcw size={12} />
+                                    <span>Reset to default</span>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Presets */}
+                        <div className="flex flex-wrap gap-2">
+                            {PROMPT_PRESETS.map(preset => {
+                                const isSelected = editingPrompt.trim() === preset.prompt.trim();
+                                return (
+                                    <button
+                                        key={preset.name}
+                                        onClick={() => applyPreset(preset.prompt)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                                            isSelected
+                                                ? 'bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--accent)] font-semibold shadow-2xs'
+                                                : 'bg-[var(--bg-tertiary)] border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]/40 hover:text-[var(--text-primary)]'
+                                        }`}
+                                    >
+                                        <span>{preset.icon}</span>
+                                        <span>{preset.name}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <textarea
+                            rows={3}
+                            value={editingPrompt}
+                            onChange={(e) => {
+                                setEditingPrompt(e.target.value);
+                                handleSavePrompt(e.target.value);
+                            }}
+                            onBlur={() => handleSavePrompt()}
+                            placeholder="Add custom instructions, persona, tone, or specific formatting rules for the AI..."
+                            className="w-full px-4 py-3 rounded-xl border border-[var(--border)] bg-[var(--bg-tertiary)] focus:ring-2 ring-[var(--accent)] outline-none transition-all duration-200 text-xs font-mono text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] leading-relaxed resize-y min-h-[90px]"
+                        />
+                        <p className="text-[11px] text-[var(--text-tertiary)]">
+                            These instructions will be prepended to all queries alongside Open Claude's real-time date/time awareness and interactive code tools.
+                        </p>
                     </div>
 
                     {/* API Keys */}

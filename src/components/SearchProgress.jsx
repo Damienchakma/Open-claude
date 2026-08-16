@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, ChevronUp, CheckCircle, Loader2, Globe } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, CheckCircle, Loader2, Globe, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
- * ChatGPT-style collapsible search progress component
- * Shows "Searching the web..." with expandable progress details
+ * StitchMCP Style Search Progress component ("Claude - Refined Search Progress UI")
+ * Displays search steps in a clean paper card with step indicators and step line connector.
  */
 export function SearchProgress({
     isSearching,
@@ -13,140 +13,105 @@ export function SearchProgress({
     currentQuery = '',
     onComplete
 }) {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
 
     if (!isSearching && searchSteps.length === 0) return null;
 
     const isComplete = !isSearching && searchSteps.length > 0;
+    const stepCount = searchSteps.length + (isSearching && currentQuery ? 1 : 0);
 
     return (
-        <div className="search-progress-container my-3">
-            {/* Main collapsible button */}
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className={`
-                    inline-flex items-center gap-2 px-4 py-2.5 rounded-full
-                    transition-all duration-300 ease-out
-                    ${isComplete
-                        ? 'bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400'
-                        : 'bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-indigo-500/10 border border-blue-500/30 text-blue-600 dark:text-blue-400'
-                    }
-                    hover:shadow-md hover:scale-[1.02]
-                    cursor-pointer select-none
-                `}
-            >
-                {/* Icon */}
-                {isComplete ? (
-                    <CheckCircle size={16} className="text-green-500" />
-                ) : (
-                    <div className="relative">
-                        <Globe size={16} className="animate-pulse" />
-                        <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+        <div className="search-progress-container my-4 font-serif">
+            <div className="border border-[var(--border-light)] rounded-2xl bg-[var(--bg-secondary)] overflow-hidden shadow-sm transition-all">
+                {/* Expandable Header */}
+                <button
+                    type="button"
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="w-full flex items-center justify-between px-5 py-3.5 border-b border-[var(--border)]/60 cursor-pointer hover:bg-[var(--bg-tertiary)]/50 transition-colors text-left"
+                >
+                    <div className="flex items-center gap-2.5 text-[var(--text-secondary)]">
+                        {isSearching ? (
+                            <Loader2 size={16} className="animate-spin text-[var(--accent)]" />
+                        ) : (
+                            <CheckCircle size={16} className="text-[var(--accent)]" />
+                        )}
+                        <span className="font-serif text-[15px] font-medium text-[var(--text-primary)]">
+                            {isSearching
+                                ? `Searching web... (${stepCount} ${stepCount === 1 ? 'step' : 'steps'})`
+                                : `${stepCount} ${stepCount === 1 ? 'step' : 'steps'} completed`}
+                        </span>
                     </div>
-                )}
 
-                {/* Text */}
-                <span className="text-sm font-medium">
-                    {isComplete
-                        ? `Searched ${searchSteps.length} ${searchSteps.length === 1 ? 'query' : 'queries'}`
-                        : 'Searching the web...'
-                    }
-                </span>
-
-                {/* Sources count badge */}
-                {totalSources > 0 && (
-                    <span className={`
-                        px-2 py-0.5 rounded-full text-xs font-semibold
-                        ${isComplete
-                            ? 'bg-green-500/20 text-green-600 dark:text-green-400'
-                            : 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                        }
-                    `}>
-                        {totalSources} sources
-                    </span>
-                )}
-
-                {/* Expand/collapse chevron */}
-                {isExpanded ? (
-                    <ChevronUp size={14} className="ml-1" />
-                ) : (
-                    <ChevronDown size={14} className="ml-1" />
-                )}
-            </button>
-
-            {/* Expandable details panel */}
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
-                        className="overflow-hidden"
-                    >
-                        <div className="mt-2 ml-2 pl-4 border-l-2 border-[var(--border)] space-y-2">
-                            {searchSteps.map((step, index) => (
-                                <SearchStepItem
-                                    key={index}
-                                    step={step}
-                                    index={index + 1}
-                                    isLast={index === searchSteps.length - 1}
-                                    isCurrentlySearching={isSearching && index === searchSteps.length - 1}
-                                />
-                            ))}
-
-                            {/* Show "searching..." for current query */}
-                            {isSearching && currentQuery && (
-                                <SearchStepItem
-                                    step={{ query: currentQuery, status: 'searching' }}
-                                    index={searchSteps.length + 1}
-                                    isLast={true}
-                                    isCurrentlySearching={true}
-                                />
-                            )}
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
-    );
-}
-
-function SearchStepItem({ step, index, isLast, isCurrentlySearching }) {
-    return (
-        <div className={`
-            flex items-start gap-2 py-1.5
-            ${isCurrentlySearching ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}
-        `}>
-            {/* Status icon */}
-            <div className="mt-0.5">
-                {isCurrentlySearching ? (
-                    <Loader2 size={14} className="animate-spin text-blue-500" />
-                ) : (
-                    <CheckCircle size={14} className="text-green-500" />
-                )}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                    <Search size={12} className="text-[var(--text-tertiary)] shrink-0" />
-                    <span className="text-sm truncate font-medium">
-                        "{step.query || step.optimizedQuery}"
-                    </span>
-                </div>
-
-                {step.sourcesFound !== undefined && (
-                    <div className="text-xs text-[var(--text-tertiary)] mt-0.5">
-                        Found {step.sourcesFound} sources
+                    <div className="flex items-center gap-2 text-[var(--text-tertiary)] text-xs font-sans">
+                        {totalSources > 0 && (
+                            <span className="bg-[var(--bg-tertiary)] text-[var(--text-secondary)] px-2.5 py-0.5 rounded-full font-medium">
+                                {totalSources} {totalSources === 1 ? 'result' : 'results'}
+                            </span>
+                        )}
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                     </div>
-                )}
+                </button>
 
-                {step.reason && !isCurrentlySearching && (
-                    <div className="text-xs text-[var(--text-tertiary)] mt-0.5 italic">
-                        {step.reason}
-                    </div>
-                )}
+                {/* Steps Details */}
+                <AnimatePresence>
+                    {isExpanded && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                        >
+                            <div className="px-6 py-4 space-y-4 font-serif">
+                                {searchSteps.map((step, index) => (
+                                    <div
+                                        key={index}
+                                        className={`flex flex-col gap-1 ${index > 0 ? 'pl-6 relative border-t border-[var(--border)]/40 pt-3' : ''}`}
+                                    >
+                                        {/* Step connecting line indicator */}
+                                        {index > 0 && (
+                                            <div className="absolute left-2 top-0 bottom-3 w-px bg-[var(--border)]" />
+                                        )}
+
+                                        <div className="flex items-center justify-between group">
+                                            <div className="flex items-center gap-3 text-[var(--text-primary)] relative">
+                                                {index > 0 && (
+                                                    <div className="absolute left-[-21px] w-2 h-2 rounded-full bg-[var(--accent)]/60" />
+                                                )}
+                                                <Search size={16} className="text-[var(--accent)] shrink-0" />
+                                                <span className="text-[15px] font-medium leading-snug">
+                                                    "{step.query || step.optimizedQuery}"
+                                                </span>
+                                            </div>
+
+                                            {step.sourcesFound !== undefined && (
+                                                <span className="text-xs font-sans text-[var(--text-tertiary)] bg-[var(--bg-primary)] px-2 py-0.5 rounded border border-[var(--border)]">
+                                                    {step.sourcesFound} {step.sourcesFound === 1 ? 'source' : 'sources'}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {step.reason && (
+                                            <p className="text-xs text-[var(--text-secondary)] pl-7 italic font-sans">
+                                                {step.reason}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+
+                                {/* Currently active searching step */}
+                                {isSearching && currentQuery && (
+                                    <div className="flex items-center gap-3 text-[var(--accent)] font-serif text-[15px] pl-6 relative border-t border-[var(--border)]/40 pt-3">
+                                        <div className="absolute left-2 top-0 bottom-3 w-px bg-[var(--border)]" />
+                                        <div className="absolute left-[-21px] w-2 h-2 rounded-full bg-[var(--accent)] animate-ping" />
+                                        <Loader2 size={16} className="animate-spin shrink-0" />
+                                        <span>Analyzing "{currentQuery}"...</span>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </div>
     );

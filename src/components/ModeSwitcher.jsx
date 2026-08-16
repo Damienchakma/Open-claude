@@ -6,7 +6,7 @@ export default function ModeSwitcher() {
 
     const modes = [
         { id: MODES.CHAT, icon: MessageSquare, label: 'Chat' },
-        { id: MODES.CODE, icon: Code, label: 'Code' },
+        // { id: MODES.CODE, icon: Code, label: 'Code' },   // removed — not implemented
         // { id: MODES.BUILD, icon: Rocket, label: 'Build' } // Hidden for now until implemented
     ];
 

@@ -1,20 +1,71 @@
-import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, Brain, Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronRight, Brain, Sparkles, Clock, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-export function ThinkingDisplay({ thinking, tokens, duration, isStreaming = false }) {
+export function ThinkingDisplay({ thinking, tokens, duration, isStreaming = false, modelName }) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const scrollContainerRef = useRef(null);
+    const isUserScrolledRef = useRef(false);
+    const prevThinkingLenRef = useRef(0);
 
-    // Don't render if no thinking content
+    // Don't render if no thinking content and not streaming
     if (!thinking && !isStreaming) return null;
 
-    // Calculate character count if tokens not provided
-    const displayCount = tokens || thinking?.length || 0;
-    const countLabel = tokens ? `${tokens} tokens` : `${displayCount} chars`;
+    // Auto-expand when streaming thinking starts arriving
+    useEffect(() => {
+        if (isStreaming && thinking && thinking.trim() !== '' && !isExpanded) {
+            setIsExpanded(true);
+        }
+    }, [isStreaming, thinking]);
 
-    // Format duration (milliseconds to seconds)
+    // Bottom-aware auto-scroll: only scroll if user is near the bottom
+    useEffect(() => {
+        const container = scrollContainerRef.current;
+        if (!container || !isExpanded) return;
+
+        // Only auto-scroll if content actually changed (new thinking arrived)
+        if (thinking && thinking.length > prevThinkingLenRef.current) {
+            prevThinkingLenRef.current = thinking.length;
+
+            if (!isUserScrolledRef.current) {
+                // Use requestAnimationFrame for smooth scroll after DOM update
+                requestAnimationFrame(() => {
+                    container.scrollTop = container.scrollHeight;
+                });
+            }
+        }
+    }, [thinking, isExpanded]);
+
+    // Track user scroll position to enable/disable auto-scroll
+    const handleScroll = useCallback(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const threshold = 50; // px tolerance
+        const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+        isUserScrolledRef.current = !isAtBottom;
+    }, []);
+
+    // Reset scroll tracking when panel is toggled
+    useEffect(() => {
+        if (isExpanded) {
+            isUserScrolledRef.current = false;
+            // Scroll to bottom when first opened
+            requestAnimationFrame(() => {
+                const container = scrollContainerRef.current;
+                if (container) {
+                    container.scrollTop = container.scrollHeight;
+                }
+            });
+        }
+    }, [isExpanded]);
+
+    // Calculate display metrics
+    const displayCount = tokens || thinking?.length || 0;
+    const countLabel = tokens ? `${tokens.toLocaleString()} tokens` : `${displayCount.toLocaleString()} chars`;
+
     const formatDuration = (ms) => {
         if (!ms) return null;
         const seconds = (ms / 1000).toFixed(1);
@@ -33,60 +84,79 @@ export function ThinkingDisplay({ thinking, tokens, duration, isStreaming = fals
     };
 
     return (
-        <div className="thinking-container mb-3 rounded-lg overflow-hidden border border-purple-200 dark:border-purple-900/30 bg-gradient-to-br from-indigo-50/50 via-purple-50/30 to-pink-50/20 dark:from-indigo-950/20 dark:via-purple-950/20 dark:to-pink-950/10">
+        <div className="thinking-panel mb-4 rounded-xl overflow-hidden border border-[var(--thinking-border)] bg-[var(--thinking-bg)]">
+            {/* Header / Toggle Button */}
             <button
                 onClick={handleToggle}
                 onKeyDown={handleKeyDown}
-                className="thinking-header w-full flex items-center gap-2.5 p-3 hover:bg-purple-100/40 dark:hover:bg-purple-900/20 transition-all duration-200 text-left group"
+                className="thinking-panel-header w-full flex items-center gap-2.5 px-4 py-3 hover:bg-[var(--thinking-hover)] transition-all duration-200 text-left group cursor-pointer"
                 aria-expanded={isExpanded}
+                aria-controls="thinking-content-panel"
                 aria-label={isExpanded ? 'Hide thinking process' : 'Show thinking process'}
-                disabled={isStreaming && !thinking}
             >
+                {/* Chevron */}
                 <motion.div
                     animate={{ rotate: isExpanded ? 90 : 0 }}
                     transition={{ duration: 0.2, ease: 'easeInOut' }}
                     className="shrink-0"
                 >
-                    <ChevronRight size={16} className="text-purple-600 dark:text-purple-400" />
+                    <ChevronRight size={15} className="text-[var(--thinking-accent)]" />
                 </motion.div>
 
-                {isStreaming && !thinking ? (
+                {/* Icon */}
+                {isStreaming && thinking ? (
                     <motion.div
                         animate={{ rotate: 360 }}
                         transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
                         className="shrink-0"
                     >
-                        <Sparkles size={16} className="text-purple-500 dark:text-purple-400" />
+                        <Sparkles size={15} className="text-[var(--thinking-accent)]" />
                     </motion.div>
                 ) : (
-                    <Brain size={16} className="text-purple-500 dark:text-purple-400 shrink-0" />
+                    <Brain size={15} className="text-[var(--thinking-accent)] shrink-0" />
                 )}
 
+                {/* Label */}
                 <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-purple-900 dark:text-purple-200">
-                        {isStreaming && !thinking ? 'Thinking...' : (isExpanded ? 'Hide reasoning' : 'Show reasoning')}
+                    <span className="text-sm font-medium text-[var(--thinking-text)]">
+                        {isStreaming && thinking ? 'Thinking...' : (isExpanded ? 'Hide reasoning' : 'Show reasoning')}
                     </span>
                     {!isExpanded && thinking && !isStreaming && (
-                        <div className="text-xs text-purple-600/70 dark:text-purple-400/70 truncate mt-0.5">
-                            Click to expand reasoning
-                        </div>
+                        <span className="text-xs text-[var(--thinking-muted)] ml-2">
+                            — click to expand
+                        </span>
                     )}
                 </div>
 
+                {/* Badges */}
                 <div className="flex items-center gap-2 shrink-0">
-                    {thinking && displayCount > 0 && (
-                        <span className="px-2 py-0.5 bg-purple-200/60 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 rounded-full text-xs font-medium">
-                            {countLabel}
+                    {modelName && (
+                        <span className="thinking-badge text-[var(--thinking-muted)]">
+                            {modelName}
                         </span>
                     )}
-                    {duration && (
-                        <span className="text-xs text-purple-600/70 dark:text-purple-400/70">
-                            {formatDuration(duration)}
+                    {thinking && displayCount > 0 && !isStreaming && (
+                        <span className="thinking-badge text-[var(--thinking-accent)]">
+                            <Zap size={11} className="inline -mt-px" />
+                            {' '}{countLabel}
+                        </span>
+                    )}
+                    {duration && !isStreaming && (
+                        <span className="thinking-badge text-[var(--thinking-muted)]">
+                            <Clock size={11} className="inline -mt-px" />
+                            {' '}{formatDuration(duration)}
+                        </span>
+                    )}
+                    {isStreaming && thinking && (
+                        <span className="thinking-badge text-[var(--thinking-accent)]">
+                            <span className="thinking-live-dot" />
+                            Live
                         </span>
                     )}
                 </div>
             </button>
 
+            {/* Expandable Content Panel */}
             <AnimatePresence initial={false}>
                 {isExpanded && thinking && (
                     <motion.div
@@ -96,11 +166,25 @@ export function ThinkingDisplay({ thinking, tokens, duration, isStreaming = fals
                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                         className="overflow-hidden"
                     >
-                        <div className="thinking-content border-t border-purple-200/60 dark:border-purple-800/30 p-4 bg-white/40 dark:bg-gray-900/20">
-                            <div className="prose prose-sm max-w-none dark:prose-invert">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {thinking}
-                                </ReactMarkdown>
+                        <div
+                            id="thinking-content-panel"
+                            ref={scrollContainerRef}
+                            onScroll={handleScroll}
+                            className="thinking-scroll-container border-t border-[var(--thinking-border)]"
+                            role="region"
+                            aria-label="Model reasoning content"
+                            aria-live="polite"
+                        >
+                            <div className="p-4">
+                                <div className="prose prose-sm max-w-none thinking-prose">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                        {thinking}
+                                    </ReactMarkdown>
+                                </div>
+                                {/* Streaming cursor */}
+                                {isStreaming && (
+                                    <span className="thinking-cursor" aria-hidden="true" />
+                                )}
                             </div>
                         </div>
                     </motion.div>

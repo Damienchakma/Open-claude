@@ -1,132 +1,90 @@
-// LLM Client Factory with Industry-Standard Thinking Detection
-// Based on Open-WebUI and LobeChat implementations
+// LLM Client Factory with Universal Industry-Standard Reasoning Detection
+// Supports API-level reasoning_content/reasoning/thinking/thought AND live tag streaming (<think>, <thinking>)
 
-// UNIVERSAL Configuration - Works across ALL providers and models
-const THINKING_CONFIG = {
-    // Universal standard: <think> tags (de-facto industry standard)
-    tags: {
-        patterns: [
-            { open: '<think>', close: '</think>', name: 'think' },
-            { open: '<thinking>', close: '</thinking>', name: 'thinking' },
-            { open: '[THINKING]', close: '[/THINKING]', name: 'THINKING' },
-            { open: '[REASONING]', close: '[/REASONING]', name: 'REASONING' },
-        ]
-    },
+const THINKING_FIELDS = [
+    'reasoning_content',
+    'reasoning',
+    'thinking',
+    'thought',
+    'thought_process',
+    'chain_of_thought',
+    'internal_monologue',
+    'thinking_blocks',
+    'reasoning_blocks'
+];
 
-    // Provider-specific API field mappings
-    fields: {
-        openai: {
-            delta: ['reasoning'],
-            message: ['reasoning_content'],
-            usage: 'reasoning_tokens'
-        },
-        anthropic: {
-            contentBlocks: true,
-            blockTypes: ['thinking', 'reasoning']
-        },
-        deepseek: {
-            message: ['reasoning_content'],
-            delta: ['reasoning']
-        },
-        google: {
-            message: ['thought_process', 'thinking']
-        }
-    },
-
-    // Universal field names to check (works for any provider)
-    universalFields: [
-        'reasoning',
-        'reasoning_content',
-        'thinking',
-        'thought_process',
-        'chain_of_thought',
-        'internal_monologue',
-        'thinking_blocks',
-        'reasoning_blocks'
-    ]
-};
-
-// Universal extraction function - checks ALL possible locations
-function extractThinking(apiResponse, providerConfig = null) {
+/**
+ * Universal reasoning extraction function - checks payload for any known reasoning field
+ */
+function extractThinking(apiResponse) {
     if (!apiResponse) return { thinking: null, content: null };
 
-    // Method 1: Check provider-specific fields
-    if (providerConfig) {
-        // Check delta fields (streaming)
-        if (apiResponse.delta && providerConfig.delta) {
-            for (const field of providerConfig.delta) {
-                if (apiResponse.delta[field]) {
-                    return {
-                        thinking: apiResponse.delta[field],
-                        content: apiResponse.delta.content || null
-                    };
-                }
-            }
+    if (typeof apiResponse === 'string') {
+        return { thinking: null, content: apiResponse };
+    }
+
+    let thinking = null;
+    let content = null;
+
+    // Check delta or message or candidate content or top-level payload
+    const target = apiResponse.delta || apiResponse.message || (apiResponse.content && typeof apiResponse.content === 'object' ? apiResponse.content : null) || apiResponse;
+
+    // 1. Check all known reasoning fields
+    for (const field of THINKING_FIELDS) {
+        if (target[field] && typeof target[field] === 'string') {
+            thinking = target[field];
+            break;
         }
+    }
 
-        // Check message fields
-        if (apiResponse.message && providerConfig.message) {
-            for (const field of providerConfig.message) {
-                if (apiResponse.message[field]) {
-                    return {
-                        thinking: apiResponse.message[field],
-                        content: apiResponse.message.content || null
-                    };
-                }
-            }
-        }
-
-        // Check content blocks (Anthropic style)
-        if (providerConfig.contentBlocks && Array.isArray(apiResponse.content)) {
-            let thinking = null;
-            let content = '';
-
-            for (const block of apiResponse.content) {
-                if (providerConfig.blockTypes.includes(block.type)) {
-                    thinking = block.text;
-                } else if (block.type === 'text') {
-                    content += block.text;
-                }
-            }
-
-            if (thinking) {
-                return { thinking, content };
+    // 2. Check Gemini candidate parts format: { text: "...", thought: true }
+    const parts = target.parts || apiResponse.content?.parts || apiResponse.parts;
+    if (Array.isArray(parts)) {
+        for (const part of parts) {
+            if (part.thought || part.type === 'thinking' || part.type === 'reasoning') {
+                thinking = (thinking || '') + (part.text || (typeof part.thought === 'string' ? part.thought : ''));
+            } else if (part.text) {
+                content = (content || '') + part.text;
             }
         }
     }
 
-    // Method 2: Check universal field names
-    for (const field of THINKING_CONFIG.universalFields) {
-        if (apiResponse[field]) {
-            return {
-                thinking: apiResponse[field],
-                content: apiResponse.content || apiResponse.text || null
-            };
-        }
+    // 3. Check Anthropic content_block format
+    if (!thinking && target.type && (target.type === 'thinking' || target.type === 'reasoning')) {
+        thinking = target.thinking || target.text || target.content;
+    }
 
-        // Check nested in message
-        if (apiResponse.message && apiResponse.message[field]) {
-            return {
-                thinking: apiResponse.message[field],
-                content: apiResponse.message.content || null
-            };
+    // Determine normal content
+    if (!content) {
+        if (typeof target.content === 'string') {
+            content = target.content;
+        } else if (typeof target.text === 'string') {
+            content = target.text;
+        } else if (typeof apiResponse.text === 'string') {
+            content = apiResponse.text;
         }
     }
 
-    // Method 3: No structured thinking found
-    return {
-        thinking: null,
-        content: apiResponse.content || apiResponse.text || null
-    };
+    return { thinking, content };
 }
 
-// Extract thinking tokens from usage data
-function extractThinkingTokens(apiResponse, providerConfig) {
-    if (!apiResponse.usage || !providerConfig?.usage) return null;
-    return apiResponse.usage[providerConfig.usage] || null;
+/**
+ * Extract reasoning tokens from usage metadata
+ */
+function extractThinkingTokens(apiResponse) {
+    if (!apiResponse?.usage && !apiResponse?.usageMetadata) return null;
+    const usage = apiResponse.usage || apiResponse.usageMetadata;
+    return usage.reasoning_tokens ||
+        usage.completion_tokens_details?.reasoning_tokens ||
+        usage.thinking_tokens ||
+        usage.candidatesTokenCount ||
+        null;
 }
 
-// Streaming tag parser - tracks state across chunks
+/**
+ * StreamingTagParser - Live token-by-token stream parser for <think>, <thinking>, [THINKING], etc.
+ * Handles split tags across SSE chunks without buffering lag.
+ */
 class StreamingTagParser {
     constructor() {
         this.reset();
@@ -134,73 +92,115 @@ class StreamingTagParser {
 
     reset() {
         this.inThinking = false;
-        this.thinkingBuffer = '';
-        this.contentBuffer = '';
+        this.buffer = '';
         this.currentTag = null;
     }
 
-    // Process a text chunk and extract thinking/content
     processChunk(text) {
+        if (!text) return [];
+
+        this.buffer += text;
         const results = [];
-        let remaining = text;
 
-        while (remaining) {
+        const TAGS = [
+            { open: '<think>', close: '</think>' },
+            { open: '<thinking>', close: '</thinking>' },
+            { open: '[THINKING]', close: '[/THINKING]' },
+            { open: '[REASONING]', close: '[/REASONING]' }
+        ];
+
+        let loop = true;
+        while (loop && this.buffer.length > 0) {
+            loop = false;
+
             if (!this.inThinking) {
-                // Look for opening tag
-                let earliestMatch = null;
-                let earliestIndex = Infinity;
+                // Find earliest opening tag in buffer
+                let earliestIndex = -1;
+                let matchedTag = null;
 
-                for (const tag of THINKING_CONFIG.tags.patterns) {
-                    const index = remaining.indexOf(tag.open);
-                    if (index !== -1 && index < earliestIndex) {
-                        earliestIndex = index;
-                        earliestMatch = tag;
+                for (const tag of TAGS) {
+                    const idx = this.buffer.indexOf(tag.open);
+                    if (idx !== -1 && (earliestIndex === -1 || idx < earliestIndex)) {
+                        earliestIndex = idx;
+                        matchedTag = tag;
                     }
                 }
 
-                if (earliestMatch) {
-                    // Emit content before tag
+                if (earliestIndex !== -1) {
                     if (earliestIndex > 0) {
-                        const beforeTag = remaining.substring(0, earliestIndex);
-                        if (beforeTag.trim()) {
-                            results.push({ isThinking: false, content: beforeTag });
+                        results.push({ isThinking: false, content: this.buffer.slice(0, earliestIndex) });
+                    }
+                    this.inThinking = true;
+                    this.currentTag = matchedTag;
+                    this.buffer = this.buffer.slice(earliestIndex + matchedTag.open.length);
+                    loop = true;
+                } else {
+                    // Check if buffer ends with a partial prefix of any open tag
+                    let partialLength = 0;
+                    for (const tag of TAGS) {
+                        for (let len = 1; len < tag.open.length; len++) {
+                            const prefix = tag.open.slice(0, len);
+                            if (this.buffer.endsWith(prefix)) {
+                                partialLength = Math.max(partialLength, len);
+                            }
                         }
                     }
 
-                    // Enter thinking mode
-                    this.inThinking = true;
-                    this.currentTag = earliestMatch;
-                    remaining = remaining.substring(earliestIndex + earliestMatch.open.length);
-                } else {
-                    // No tag found, emit as regular content
-                    if (remaining.trim()) {
-                        results.push({ isThinking: false, content: remaining });
+                    if (partialLength > 0) {
+                        const safeText = this.buffer.slice(0, this.buffer.length - partialLength);
+                        if (safeText) {
+                            results.push({ isThinking: false, content: safeText });
+                        }
+                        this.buffer = this.buffer.slice(this.buffer.length - partialLength);
+                    } else {
+                        results.push({ isThinking: false, content: this.buffer });
+                        this.buffer = '';
                     }
-                    remaining = '';
                 }
             } else {
-                // Look for closing tag
-                const closeIndex = remaining.indexOf(this.currentTag.close);
+                // In thinking mode - search for closing tag
+                const closeTag = this.currentTag.close;
+                const closeIdx = this.buffer.indexOf(closeTag);
 
-                if (closeIndex !== -1) {
-                    // Found closing tag
-                    const thinkingContent = remaining.substring(0, closeIndex);
-                    this.thinkingBuffer += thinkingContent;
-
-                    // Emit complete thinking
-                    if (this.thinkingBuffer.trim()) {
-                        results.push({ isThinking: true, content: this.thinkingBuffer.trim() });
+                if (closeIdx !== -1) {
+                    if (closeIdx > 0) {
+                        results.push({ isThinking: true, content: this.buffer.slice(0, closeIdx) });
                     }
-
-                    // Exit thinking mode
                     this.inThinking = false;
-                    this.thinkingBuffer = '';
+                    this.buffer = this.buffer.slice(closeIdx + closeTag.length);
                     this.currentTag = null;
-                    remaining = remaining.substring(closeIndex + this.currentTag.close.length);
+                    loop = true;
                 } else {
-                    // No closing tag yet, buffer it
-                    this.thinkingBuffer += remaining;
-                    remaining = '';
+                    // Check if buffer contains a clear double-newline transition to an answer (unclosed <think> tag safety)
+                    const answerTransitionMatch = this.buffer.match(/\n\n(?=Based on|Here|The|According to|In summary|To |## |# |\d+\.\s|\*|Sure|Certainly|Note:)/i);
+                    if (answerTransitionMatch && answerTransitionMatch.index > 30) {
+                        const thinkPart = this.buffer.slice(0, answerTransitionMatch.index);
+                        results.push({ isThinking: true, content: thinkPart });
+                        this.inThinking = false;
+                        this.currentTag = null;
+                        this.buffer = this.buffer.slice(answerTransitionMatch.index);
+                        loop = true;
+                    } else {
+                        // Check if buffer ends with a partial prefix of closing tag
+                        let partialLength = 0;
+                        for (let len = 1; len < closeTag.length; len++) {
+                            const prefix = closeTag.slice(0, len);
+                            if (this.buffer.endsWith(prefix)) {
+                                partialLength = Math.max(partialLength, len);
+                            }
+                        }
+
+                        if (partialLength > 0) {
+                            const safeThinking = this.buffer.slice(0, this.buffer.length - partialLength);
+                            if (safeThinking) {
+                                results.push({ isThinking: true, content: safeThinking });
+                            }
+                            this.buffer = this.buffer.slice(this.buffer.length - partialLength);
+                        } else {
+                            results.push({ isThinking: true, content: this.buffer });
+                            this.buffer = '';
+                        }
+                    }
                 }
             }
         }
@@ -208,12 +208,24 @@ class StreamingTagParser {
         return results;
     }
 
-    // Get any buffered incomplete thinking
-    getBuffered() {
-        if (this.thinkingBuffer && this.inThinking) {
-            return { isThinking: true, content: this.thinkingBuffer };
+    flush() {
+        const results = [];
+        if (this.buffer) {
+            if (this.inThinking) {
+                // Check if buffer in unclosed thinking contains a double-newline transition to main answer
+                const splitIdx = this.buffer.search(/\n\n(?=[A-Z0-9#\*])/i);
+                if (splitIdx > 30) {
+                    results.push({ isThinking: true, content: this.buffer.slice(0, splitIdx).trim() });
+                    results.push({ isThinking: false, content: this.buffer.slice(splitIdx).trim() });
+                } else {
+                    results.push({ isThinking: true, content: this.buffer });
+                }
+            } else {
+                results.push({ isThinking: false, content: this.buffer });
+            }
+            this.buffer = '';
         }
-        return null;
+        return results;
     }
 }
 
@@ -241,17 +253,16 @@ class BaseClient {
         this.apiKey = apiKey;
     }
 
-    async streamChat(messages, onChunk, modelId) {
+    async streamChat(messages, onChunk, modelId, options = {}) {
         throw new Error('Not implemented');
     }
 }
 
 // OpenAI Client with comprehensive detection
 export class OpenAIClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'gpt-4o') {
+    async streamChat(messages, onChunk, modelId = 'gpt-4o', options = {}) {
         if (!this.apiKey) throw new Error('OpenAI API Key missing');
 
-        const config = THINKING_CONFIG.fields.openai;
         const tagParser = new StreamingTagParser();
 
         // Format messages - handle images if present
@@ -288,7 +299,8 @@ export class OpenAIClient extends BaseClient {
                 model: modelId,
                 messages: formattedMessages,
                 stream: true
-            })
+            }),
+            signal: options.signal
         });
 
         if (!response.ok) {
@@ -311,16 +323,15 @@ export class OpenAIClient extends BaseClient {
                     try {
                         const data = JSON.parse(line.slice(6));
 
-                        // LAYER 1: Check API-level thinking fields
-                        const extracted = extractThinking(data.choices?.[0], config);
+                        // LAYER 1: Check API-level reasoning fields (reasoning_content, reasoning, thinking, etc.)
+                        const extracted = extractThinking(data.choices?.[0]);
 
                         if (extracted.thinking) {
-                            // Found API-level thinking
                             onChunk(extracted.thinking, { isThinking: true });
                         }
 
                         if (extracted.content) {
-                            // LAYER 2: Parse content for embedded tags
+                            // LAYER 2: Parse content for live embedded tags (<think>, <thinking>)
                             const tagResults = tagParser.processChunk(extracted.content);
                             for (const result of tagResults) {
                                 onChunk(result.content, { isThinking: result.isThinking });
@@ -328,7 +339,7 @@ export class OpenAIClient extends BaseClient {
                         }
 
                         // Extract thinking tokens
-                        const tokens = extractThinkingTokens(data, config);
+                        const tokens = extractThinkingTokens(data);
                         if (tokens) {
                             onChunk('', { thinkingTokens: tokens });
                         }
@@ -344,54 +355,114 @@ export class OpenAIClient extends BaseClient {
                 }
             }
         }
+
+        // Flush any remaining tag parser buffer
+        const flushed = tagParser.flush();
+        for (const result of flushed) {
+            onChunk(result.content, { isThinking: result.isThinking });
+        }
     }
 }
 
-// Groq Client with tag-based detection
+// Groq Client with universal detection, robust multimodal support, and DeepSeek reasoning
 export class GroqClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'llama-3.3-70b-versatile') {
-        if (!this.apiKey) throw new Error('Groq API Key missing');
+    async streamChat(messages, onChunk, modelId = 'llama-3.3-70b-versatile', options = {}) {
+        if (!this.apiKey) throw new Error('Groq API Key missing. Please add your Groq API key in Settings.');
 
         const tagParser = new StreamingTagParser();
+        const cleanModelId = (modelId || 'llama-3.3-70b-versatile').trim();
 
-        // Format messages - handle images if present (Groq uses OpenAI-compatible format)
+        // Format messages - handle multimodal images, system messages, and empty content edge cases
         const formattedMessages = messages.map(m => {
-            if (m.images && m.images.length > 0) {
-                const content = [
-                    { type: 'text', text: m.content || '' }
-                ];
+            // Case 1: Already an array of content parts (from ChatMode)
+            if (Array.isArray(m.content)) {
+                const filteredParts = m.content.filter(part => {
+                    if (part.type === 'text') return Boolean(part.text && part.text.trim());
+                    if (part.type === 'image_url') return Boolean(part.image_url?.url);
+                    return true;
+                });
 
-                for (const img of m.images) {
-                    content.push({
-                        type: 'image_url',
-                        image_url: {
-                            url: img.dataUrl || `data:${img.type || 'image/png'};base64,${img.base64}`
-                        }
-                    });
+                // If text part was empty but image exists, add default text
+                if (filteredParts.length > 0 && !filteredParts.some(p => p.type === 'text')) {
+                    filteredParts.unshift({ type: 'text', text: "What's in this image?" });
                 }
 
-                return { role: m.role, content };
+                return {
+                    role: m.role,
+                    content: filteredParts.length > 0 ? filteredParts : '...'
+                };
             }
 
-            return { role: m.role, content: m.content };
+            // Case 2: Message with attached images in metadata
+            if (m.images && Array.isArray(m.images) && m.images.length > 0) {
+                const contentParts = [];
+                const textContent = (m.content || '').trim();
+
+                contentParts.push({
+                    type: 'text',
+                    text: textContent || "What's in this image?"
+                });
+
+                for (const img of m.images) {
+                    let url = null;
+                    if (img.dataUrl) {
+                        url = img.dataUrl;
+                    } else if (img.base64) {
+                        url = `data:${img.type || 'image/png'};base64,${img.base64}`;
+                    } else if (typeof img === 'string' && img.startsWith('data:')) {
+                        url = img;
+                    }
+
+                    if (url) {
+                        contentParts.push({
+                            type: 'image_url',
+                            image_url: { url }
+                        });
+                    }
+                }
+
+                return { role: m.role, content: contentParts };
+            }
+
+            // Case 3: Standard text message
+            const text = typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '');
+            return {
+                role: m.role,
+                content: text.trim() || (m.role === 'assistant' ? '...' : '')
+            };
+        });
+
+        // Filter out completely empty messages (which cause Groq 400 errors)
+        const validMessages = formattedMessages.filter(m => {
+            if (!m.content) return false;
+            if (typeof m.content === 'string' && !m.content.trim()) return false;
+            if (Array.isArray(m.content) && m.content.length === 0) return false;
+            return true;
         });
 
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`
+                'Authorization': `Bearer ${this.apiKey.trim()}`
             },
             body: JSON.stringify({
-                model: modelId,
-                messages: formattedMessages,
+                model: cleanModelId,
+                messages: validMessages,
                 stream: true
-            })
+            }),
+            signal: options.signal
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || 'Groq API Error');
+            let errorDetails = 'Groq API Error';
+            try {
+                const err = await response.json();
+                errorDetails = err.error?.message || err.message || JSON.stringify(err);
+            } catch {
+                errorDetails = `Groq API Error (${response.status}: ${response.statusText})`;
+            }
+            throw new Error(errorDetails);
         }
 
         const reader = response.body.getReader();
@@ -408,81 +479,201 @@ export class GroqClient extends BaseClient {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                     try {
                         const data = JSON.parse(line.slice(6));
-                        const content = data.choices[0]?.delta?.content || '';
+                        const choice = data.choices?.[0];
+                        const delta = choice?.delta;
 
-                        if (content) {
-                            // Parse for thinking tags in real-time
-                            const results = tagParser.processChunk(content);
-                            for (const result of results) {
+                        // LAYER 1: DeepSeek/Groq reasoning stream (reasoning or reasoning_content)
+                        if (delta?.reasoning || delta?.reasoning_content) {
+                            const reasonText = delta.reasoning || delta.reasoning_content;
+                            onChunk(reasonText, { isThinking: true });
+                        } else {
+                            const extracted = extractThinking(choice);
+                            if (extracted.thinking) {
+                                onChunk(extracted.thinking, { isThinking: true });
+                            }
+                        }
+
+                        // LAYER 2: Text content & live embedded <think> tag parsing
+                        if (delta?.content) {
+                            const tagResults = tagParser.processChunk(delta.content);
+                            for (const result of tagResults) {
                                 onChunk(result.content, { isThinking: result.isThinking });
                             }
                         }
 
-                        // Extract finish reason
-                        const finishReason = data.choices?.[0]?.finish_reason;
+                        // Extract finish reason & usage
+                        const finishReason = choice?.finish_reason;
                         if (finishReason) {
                             onChunk('', { finishReason });
                         }
+
+                        const tokens = extractThinkingTokens(data);
+                        if (tokens) {
+                            onChunk('', { thinkingTokens: tokens });
+                        }
                     } catch (e) {
-                        console.error('Error parsing chunk', e);
+                        console.error('Error parsing Groq chunk', e);
                     }
                 }
             }
+        }
+
+        const flushed = tagParser.flush();
+        for (const result of flushed) {
+            onChunk(result.content, { isThinking: result.isThinking });
         }
     }
 }
 
 // Gemini Client with universal detection
 export class GeminiClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'gemini-1.5-flash') {
+    async streamChat(messages, onChunk, modelId = 'gemini-1.5-flash', options = {}) {
         if (!this.apiKey) throw new Error('Gemini API Key missing');
 
-        const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${modelId}:streamGenerateContent`);
+        // Sanitize modelId - strip 'models/' prefix if present
+        let cleanModelId = (modelId || 'gemini-1.5-flash').trim().replace(/^models\//, '');
+        if (!cleanModelId) cleanModelId = 'gemini-1.5-flash';
+
+        const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelId}:streamGenerateContent`);
         url.searchParams.set('key', this.apiKey);
         url.searchParams.set('alt', 'sse');
-        const config = THINKING_CONFIG.fields.google;
         const tagParser = new StreamingTagParser();
 
-        // Format messages - handle images with Gemini's format
-        const contents = messages.map(m => {
-            const parts = [];
+        let systemInstructionText = '';
+        const rawTurns = [];
 
-            // Add text part
-            if (m.content) {
-                parts.push({ text: m.content });
+        for (const m of messages) {
+            if (m.role === 'system') {
+                const sys = typeof m.content === 'string'
+                    ? m.content
+                    : Array.isArray(m.content)
+                        ? m.content.map(p => p?.text || '').join('\n')
+                        : '';
+                if (sys.trim()) {
+                    systemInstructionText += (systemInstructionText ? '\n\n' : '') + sys.trim();
+                }
+                continue;
             }
 
-            // Add image parts if present
-            if (m.images && m.images.length > 0) {
-                for (const img of m.images) {
-                    parts.push({
-                        inline_data: {
-                            mime_type: img.type || 'image/png',
-                            data: img.base64
+            const role = (m.role === 'assistant' || m.role === 'model') ? 'model' : 'user';
+            const parts = [];
+
+            // 1. Handle content (string or array)
+            if (typeof m.content === 'string') {
+                if (m.content.trim()) {
+                    parts.push({ text: m.content });
+                }
+            } else if (Array.isArray(m.content)) {
+                for (const part of m.content) {
+                    if (typeof part === 'string') {
+                        if (part.trim()) parts.push({ text: part });
+                    } else if (part && typeof part === 'object') {
+                        if (part.type === 'text' && part.text) {
+                            parts.push({ text: part.text });
+                        } else if (part.type === 'image_url' && part.image_url?.url) {
+                            const dataUrl = part.image_url.url;
+                            const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+                            if (match) {
+                                parts.push({
+                                    inline_data: {
+                                        mime_type: match[1],
+                                        data: match[2]
+                                    }
+                                });
+                            }
                         }
-                    });
+                    }
                 }
             }
 
-            return {
-                role: m.role === 'assistant' ? 'model' : 'user',
-                parts: parts.length > 0 ? parts : [{ text: '' }]
+            // 2. Handle images attached directly on message
+            if (m.images && Array.isArray(m.images)) {
+                for (const img of m.images) {
+                    let mimeType = img.type || 'image/png';
+                    let base64Data = img.base64 || '';
+                    if (img.dataUrl) {
+                        const match = img.dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+                        if (match) {
+                            mimeType = match[1];
+                            base64Data = match[2];
+                        }
+                    } else if (typeof img === 'string' && img.startsWith('data:')) {
+                        const match = img.match(/^data:([^;]+);base64,(.+)$/);
+                        if (match) {
+                            mimeType = match[1];
+                            base64Data = match[2];
+                        }
+                    }
+                    if (base64Data) {
+                        parts.push({
+                            inline_data: {
+                                mime_type: mimeType,
+                                data: base64Data
+                            }
+                        });
+                    }
+                }
+            }
+
+            if (parts.length > 0) {
+                rawTurns.push({ role, parts });
+            }
+        }
+
+        // Gemini API strict turn rules:
+        // 1. Must alternate between 'user' and 'model'
+        // 2. First turn MUST be 'user'
+        const contents = [];
+        for (const turn of rawTurns) {
+            if (contents.length === 0) {
+                if (turn.role === 'model') {
+                    // Prepend a dummy user turn if conversation started with assistant
+                    contents.push({ role: 'user', parts: [{ text: 'Hello' }] });
+                }
+                contents.push(turn);
+            } else {
+                const lastTurn = contents[contents.length - 1];
+                if (lastTurn.role === turn.role) {
+                    // Merge consecutive turns of the same role
+                    lastTurn.parts.push(...turn.parts);
+                } else {
+                    contents.push(turn);
+                }
+            }
+        }
+
+        if (contents.length === 0) {
+            contents.push({ role: 'user', parts: [{ text: 'Hello' }] });
+        }
+
+        const requestBody = {
+            contents
+        };
+
+        if (systemInstructionText) {
+            requestBody.system_instruction = {
+                parts: [{ text: systemInstructionText }]
             };
-        });
+        }
 
         const response = await fetch(url.toString(), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                contents: contents
-            })
+            body: JSON.stringify(requestBody),
+            signal: options.signal
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || 'Gemini API Error');
+            let errMsg = 'Gemini API Error';
+            try {
+                const err = await response.json();
+                errMsg = err.error?.message || (Array.isArray(err) && err[0]?.error?.message) || JSON.stringify(err);
+            } catch {
+                errMsg = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errMsg);
         }
 
         const reader = response.body.getReader();
@@ -507,42 +698,10 @@ export class GeminiClient extends BaseClient {
 
                 try {
                     const data = JSON.parse(payload);
+                    const candidate = data.candidates?.[0];
 
-                    // Check for API-level thinking
-                    const extracted = extractThinking(data.candidates?.[0], config);
-
-                    if (extracted.thinking) {
-                        onChunk(extracted.thinking, { isThinking: true });
-                    }
-
-                    if (extracted.content) {
-                        // Parse for tags
-                        const results = tagParser.processChunk(extracted.content);
-                        for (const result of results) {
-                            onChunk(result.content, { isThinking: result.isThinking });
-                        }
-                    }
-
-                    // Extract finish reason
-                    const finishReason = data.candidates?.[0]?.finishReason;
-                    if (finishReason) {
-                        onChunk('', { finishReason });
-                    }
-                } catch (e) {
-                    console.error('Error parsing Gemini chunk', e);
-                }
-            }
-        }
-
-        // Process final buffer
-        if (buffer.trim()) {
-            try {
-                const trimmed = buffer.trim();
-                if (trimmed.startsWith('data:')) {
-                    const payload = trimmed.replace(/^data:\s*/, '');
-                    if (payload && payload !== '[DONE]') {
-                        const data = JSON.parse(payload);
-                        const extracted = extractThinking(data.candidates?.[0], config);
+                    if (candidate) {
+                        const extracted = extractThinking(candidate);
 
                         if (extracted.thinking) {
                             onChunk(extracted.thinking, { isThinking: true });
@@ -554,11 +713,57 @@ export class GeminiClient extends BaseClient {
                                 onChunk(result.content, { isThinking: result.isThinking });
                             }
                         }
+
+                        const finishReason = candidate.finishReason;
+                        if (finishReason) {
+                            onChunk('', { finishReason });
+                        }
+                    }
+
+                    // Extract thinking/usage tokens if present
+                    const tokens = extractThinkingTokens(data);
+                    if (tokens) {
+                        onChunk('', { thinkingTokens: tokens });
+                    }
+                } catch (e) {
+                    console.error('Error parsing Gemini chunk', e);
+                }
+            }
+        }
+
+        if (buffer.trim()) {
+            try {
+                const trimmed = buffer.trim();
+                if (trimmed.startsWith('data:')) {
+                    const payload = trimmed.replace(/^data:\s*/, '');
+                    if (payload && payload !== '[DONE]') {
+                        const data = JSON.parse(payload);
+                        const candidate = data.candidates?.[0];
+
+                        if (candidate) {
+                            const extracted = extractThinking(candidate);
+
+                            if (extracted.thinking) {
+                                onChunk(extracted.thinking, { isThinking: true });
+                            }
+
+                            if (extracted.content) {
+                                const results = tagParser.processChunk(extracted.content);
+                                for (const result of results) {
+                                    onChunk(result.content, { isThinking: result.isThinking });
+                                }
+                            }
+                        }
                     }
                 }
             } catch (e) {
                 console.error('Error parsing final Gemini chunk', e);
             }
+        }
+
+        const flushed = tagParser.flush();
+        for (const result of flushed) {
+            onChunk(result.content, { isThinking: result.isThinking });
         }
     }
 }
@@ -569,16 +774,26 @@ export class OllamaClient extends BaseClient {
         super(null);
     }
 
-    async streamChat(messages, onChunk, modelId = 'llama2') {
+    async streamChat(messages, onChunk, modelId = 'llama2', options = {}) {
         const tagParser = new StreamingTagParser();
 
-        // Format messages - Ollama uses 'images' array for multimodal
         const formattedMessages = messages.map(m => {
             const msg = { role: m.role, content: m.content };
 
-            // Ollama expects images as array of base64 strings
             if (m.images && m.images.length > 0) {
-                msg.images = m.images.map(img => img.base64);
+                msg.images = m.images.map(img => {
+                    // Ollama expects raw base64 strings (no data URL prefix)
+                    if (img.base64) return img.base64;
+                    if (img.dataUrl) {
+                        const match = img.dataUrl.match(/^data:[^;]+;base64,(.+)$/);
+                        return match ? match[1] : img.dataUrl;
+                    }
+                    if (typeof img === 'string' && img.startsWith('data:')) {
+                        const match = img.match(/^data:[^;]+;base64,(.+)$/);
+                        return match ? match[1] : img;
+                    }
+                    return typeof img === 'string' ? img : '';
+                }).filter(Boolean);
             }
 
             return msg;
@@ -593,7 +808,8 @@ export class OllamaClient extends BaseClient {
                 model: modelId,
                 messages: formattedMessages,
                 stream: true
-            })
+            }),
+            signal: options.signal
         });
 
         if (!response.ok) {
@@ -614,11 +830,14 @@ export class OllamaClient extends BaseClient {
                 if (line.trim()) {
                     try {
                         const data = JSON.parse(line);
-                        const content = data.message?.content || '';
+                        const extracted = extractThinking(data);
 
-                        if (content) {
-                            // Parse for thinking tags
-                            const results = tagParser.processChunk(content);
+                        if (extracted.thinking) {
+                            onChunk(extracted.thinking, { isThinking: true });
+                        }
+
+                        if (extracted.content) {
+                            const results = tagParser.processChunk(extracted.content);
                             for (const result of results) {
                                 onChunk(result.content, { isThinking: result.isThinking });
                             }
@@ -629,6 +848,11 @@ export class OllamaClient extends BaseClient {
                 }
             }
         }
+
+        const flushed = tagParser.flush();
+        for (const result of flushed) {
+            onChunk(result.content, { isThinking: result.isThinking });
+        }
     }
 }
 
@@ -638,10 +862,9 @@ export class LMStudioClient extends BaseClient {
         super(null);
     }
 
-    async streamChat(messages, onChunk, modelId) {
+    async streamChat(messages, onChunk, modelId, options = {}) {
         const tagParser = new StreamingTagParser();
 
-        // Format messages - LM Studio uses OpenAI-compatible format
         const formattedMessages = messages.map(m => {
             if (m.images && m.images.length > 0) {
                 const content = [
@@ -672,7 +895,8 @@ export class LMStudioClient extends BaseClient {
                 model: modelId || 'local-model',
                 messages: formattedMessages,
                 stream: true
-            })
+            }),
+            signal: options.signal
         });
 
         if (!response.ok) {
@@ -693,11 +917,14 @@ export class LMStudioClient extends BaseClient {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                     try {
                         const data = JSON.parse(line.slice(6));
-                        const content = data.choices[0]?.delta?.content || '';
+                        const extracted = extractThinking(data.choices?.[0]);
 
-                        if (content) {
-                            // Parse for thinking tags
-                            const results = tagParser.processChunk(content);
+                        if (extracted.thinking) {
+                            onChunk(extracted.thinking, { isThinking: true });
+                        }
+
+                        if (extracted.content) {
+                            const results = tagParser.processChunk(extracted.content);
                             for (const result of results) {
                                 onChunk(result.content, { isThinking: result.isThinking });
                             }
@@ -707,6 +934,11 @@ export class LMStudioClient extends BaseClient {
                     }
                 }
             }
+        }
+
+        const flushed = tagParser.flush();
+        for (const result of flushed) {
+            onChunk(result.content, { isThinking: result.isThinking });
         }
     }
 }

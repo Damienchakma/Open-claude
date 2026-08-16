@@ -59,6 +59,16 @@ export function ChatProvider({ children }) {
         localStorage.setItem('user_name', name);
     }, []);
 
+    // Custom System Prompt - persisted to localStorage
+    const [customSystemPrompt, setCustomSystemPromptState] = useState(() => {
+        return localStorage.getItem('custom_system_prompt') || '';
+    });
+
+    const setCustomSystemPrompt = useCallback((prompt) => {
+        setCustomSystemPromptState(prompt);
+        localStorage.setItem('custom_system_prompt', prompt);
+    }, []);
+
     // Save chats to localStorage whenever they change (but not in incognito mode)
     useEffect(() => {
         if (!isIncognitoMode) {
@@ -200,6 +210,17 @@ export function ChatProvider({ children }) {
             if (!selectedModel || !modelsForProvider.find(m => m.id === selectedModel)) {
                 updateModel(modelsForProvider[0].id);
             }
+        } else {
+            const defaults = {
+                gemini: 'gemini-1.5-flash',
+                groq: 'llama-3.3-70b-versatile',
+                openai: 'gpt-4o',
+                ollama: 'llama3',
+                lmstudio: 'local-model'
+            };
+            if (defaults[provider]) {
+                updateModel(defaults[provider]);
+            }
         }
     };
 
@@ -238,13 +259,15 @@ export function ChatProvider({ children }) {
         }
     }, [apiKeys.groq, apiKeys.openai, apiKeys.gemini]);
 
-    // Update capabilities when model changes
+    // Update capabilities dynamically when model or provider changes
     useEffect(() => {
         if (selectedModel) {
-            const capabilities = getModelCapabilities(selectedModel);
+            const providerModels = availableModels[selectedProvider] || [];
+            const foundModel = providerModels.find(m => m.id === selectedModel);
+            const capabilities = foundModel?.capabilities || getModelCapabilities(selectedModel, selectedProvider);
             setCurrentModelCapabilities(capabilities);
         }
-    }, [selectedModel]);
+    }, [selectedModel, selectedProvider, availableModels]);
 
     const addMessage = useCallback((role, content, metadata = {}, thinking = null, images = []) => {
         const safeMetadata = metadata || {};
@@ -325,6 +348,8 @@ export function ChatProvider({ children }) {
             // User settings
             userName,
             setUserName,
+            customSystemPrompt,
+            setCustomSystemPrompt,
             // Model capabilities
             currentModelCapabilities,
             supportsImages: currentModelCapabilities.image,

@@ -22,23 +22,9 @@ export class TavilyClient {
             include_answer: options.include_answer !== undefined ? options.include_answer : true,
             include_raw_content: options.include_raw_content || false,
             max_results: options.max_results || 5,
-            include_images: options.include_images || false
+            include_images: options.include_images || false,
+            auto_parameters: options.auto_parameters !== false
         };
-
-        // Add topic if specified ("general" or "news")
-        if (options.topic) {
-            searchParams.topic = options.topic;
-        }
-
-        // Add recency filter for news (days parameter)
-        if (options.days) {
-            searchParams.days = options.days;
-        }
-
-        // Enable auto-optimization (Tavily intelligently adjusts parameters)
-        if (options.auto_parameters !== false) {
-            // Tavily will auto-configure based on query
-        }
 
         const response = await fetch('https://api.tavily.com/search', {
             method: 'POST',

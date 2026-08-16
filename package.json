@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "@tailwindcss/typography": "^0.5.20",
     "@webcontainer/api": "^1.6.1",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.8",

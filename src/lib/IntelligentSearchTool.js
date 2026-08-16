@@ -77,14 +77,31 @@ export class IntelligentSearchTool {
      * @param {string} userQuery - The user's question
      * @returns {Object} - { shouldSearch: boolean, reason: string, confidence: number }
      */
-    shouldPerformWebSearch(userQuery) {
+    shouldPerformWebSearch(userQuery, conversationHistory = []) {
         const query = userQuery.toLowerCase();
+
+        // MULTI-TURN VERIFICATION CUES (User asking to check, verify, or update)
+        const verificationCues = [
+            'are you sure', 'can you check', 'verify that', 'double check',
+            'is that true', 'is that correct', 'check the web', 'search for it',
+            'find sources', 'source for this', 'update this', 'check online'
+        ];
+
+        for (const cue of verificationCues) {
+            if (query.includes(cue)) {
+                return {
+                    shouldSearch: true,
+                    reason: `User requested verification (cue: "${cue}")`,
+                    confidence: 0.98
+                };
+            }
+        }
 
         // ALWAYS SEARCH indicators (current/recent information)
         const alwaysSearchKeywords = [
             'latest', 'recent', 'current', 'today', 'yesterday',
             'this week', 'this month', 'this year', 'now',
-            '2024', '2025', 'breaking', 'news', 'update',
+            '2024', '2025', '2026', 'breaking', 'news', 'update',
             'what happened', 'who won', 'who is currently',
             'price of', 'weather', 'stock', 'score',
             'currently', 'right now', 'as of', 'at the moment'
@@ -182,27 +199,35 @@ export class IntelligentSearchTool {
                 const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey);
                 let reformulated = '';
 
-                const prompt = `You are a search query optimizer. Convert this natural language question into a concise, effective search query.
+                const currentYear = new Date().getFullYear();
+                const lastYear = currentYear - 1;
+                const prompt = `You are a search query optimizer. Convert this natural language question into a concise, effective search query. Current year is ${currentYear}.
 
 Rules:
 - Remove unnecessary words (what, is, are, the, tell, me, about)
 - Keep it 2-6 words maximum
 - Focus on key terms and entities
-- Add year if asking about "latest" or "best"
+- Add year (${currentYear}) if asking about "latest", "recent", "new", or "best"
 - Examples:
-  "What are the best smartphones in 2025?" → "best smartphones 2025"
-  "Who won the NBA finals last year?" → "NBA finals winner 2024"
-  "Tell me about recent AI developments" → "recent AI developments 2025"
+  "What are the best smartphones right now?" → "best smartphones ${currentYear}"
+  "Who won the NBA finals last year?" → "NBA finals winner ${lastYear}"
+  "Tell me about recent AI developments" → "recent AI developments ${currentYear}"
   "What's the weather like today?" → "weather today"
 
 Original query: "${originalQuery}"
 
 Optimized search query (2-6 words only):`;
 
+                const helperModel = this.llmProvider === 'gemini'
+                    ? 'gemini-1.5-flash'
+                    : this.llmProvider === 'openai'
+                        ? 'gpt-4o-mini'
+                        : 'llama-3.3-70b-versatile';
+
                 await client.streamChat(
                     [{ role: 'user', content: prompt }],
                     (chunk) => { reformulated += chunk; },
-                    this.llmProvider === 'openai' ? 'gpt-4o-mini' : 'llama-3.3-70b-versatile'
+                    helperModel
                 );
 
                 const cleaned = reformulated.trim().replace(/^["']|["']$/g, '');
@@ -776,10 +801,16 @@ Optimized search query (2-6 words only):`;
         try {
             const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey);
             let response = '';
+            const helperModel = this.llmProvider === 'gemini'
+                ? 'gemini-1.5-flash'
+                : this.llmProvider === 'openai'
+                    ? 'gpt-4o-mini'
+                    : 'llama-3.3-70b-versatile';
+
             await client.streamChat(
                 [{ role: 'user', content: prompt }],
                 (chunk) => { response += chunk; },
-                'gpt-4o-mini'
+                helperModel
             );
             const cleaned = response.replace(/```json|```/g, '').trim();
             return JSON.parse(cleaned);
@@ -806,10 +837,16 @@ Optimized search query (2-6 words only):`;
         try {
             const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey);
             let response = '';
+            const helperModel = this.llmProvider === 'gemini'
+                ? 'gemini-1.5-flash'
+                : this.llmProvider === 'openai'
+                    ? 'gpt-4o-mini'
+                    : 'llama-3.3-70b-versatile';
+
             await client.streamChat(
                 [{ role: 'user', content: prompt }],
                 (chunk) => { response += chunk; },
-                'gpt-4o-mini'
+                helperModel
             );
             const cleaned = response.replace(/```json|```/g, '').trim();
             return JSON.parse(cleaned);
@@ -943,9 +980,11 @@ You are not a chatbot. You are a **research scientist**. Deliver **flawless, pub
             let paper = '';
 
             // Use a higher-intelligence model for the final paper if possible
-            const model = (this.llmProvider === 'openai' || this.llmProvider === 'groq')
-                ? 'llama-3.3-70b-versatile' // Stronger logic for synthesis
-                : 'gpt-4o';
+            const model = this.llmProvider === 'gemini'
+                ? 'gemini-1.5-pro'
+                : this.llmProvider === 'groq'
+                    ? 'llama-3.3-70b-versatile'
+                    : 'gpt-4o';
 
             await client.streamChat(
                 [
