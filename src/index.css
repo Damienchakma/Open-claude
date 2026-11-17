@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 @import "tailwindcss";
+@import "./chat-ui.css";
 @plugin "@tailwindcss/typography";
 
 @theme {
@@ -13,14 +14,13 @@
 }
 
 :root {
-  /* Digital Paper - Light Mode (StitchMCP Manuscript Functionalism) */
-  --bg-primary: #fdf8f5;
-  --bg-secondary: #f7f3ef;
-  --bg-tertiary: #f2ede9;
-  --bg-hover: #e6e2de;
-  --text-primary: #1c1b19;
-  --text-secondary: #55433d;
-  --text-tertiary: #88726c;
+  --bg-primary: #faf9f5;
+  --bg-secondary: #f0eee6;
+  --bg-tertiary: #eeece5;
+  --bg-hover: #e8e6de;
+  --text-primary: #30302e;
+  --text-secondary: #62615a;
+  --text-tertiary: #74736c;
   --accent: #d97757;
   --accent-hover: #99462a;
   --border: #e6e2de;
@@ -29,17 +29,16 @@
   --shadow-md: rgba(0, 0, 0, 0.08);
 }
 
-/* Warm Noir - Dark Mode (High Contrast & Legibility) */
 :root.dark {
-  --bg-primary: #141311;
-  --bg-secondary: #1a1917;
-  --bg-tertiary: #2a2825;
-  --bg-hover: #3a3733;
-  --text-primary: #ffffff;
-  --text-secondary: #e2ded7;
-  --text-tertiary: #c4b8a8;
+  --bg-primary: #262624;
+  --bg-secondary: #20201e;
+  --bg-tertiary: #32322f;
+  --bg-hover: #393936;
+  --text-primary: #eeeee8;
+  --text-secondary: #c2c0b7;
+  --text-tertiary: #a3a197;
   --accent: #d97757;
-  --accent-hover: #e6c364;
+  --accent-hover: #e18b6e;
   --border: #3d3a36;
   --border-light: #524d45;
   --shadow: rgba(0, 0, 0, 0.4);
@@ -730,52 +729,78 @@ details.thinking-block> :not(summary) {
 
 /* Light mode thinking variables */
 :root {
-  --thinking-bg: linear-gradient(135deg, #f9f5ff 0%, #fdf2f8 50%, #fef7f0 100%);
-  --thinking-bg-flat: #f9f5ff;
-  --thinking-border: rgba(168, 85, 247, 0.2);
-  --thinking-hover: rgba(168, 85, 247, 0.06);
-  --thinking-accent: #8b5cf6;
-  --thinking-text: #5b21b6;
-  --thinking-muted: #7c3aed80;
-  --thinking-content-bg: rgba(255, 255, 255, 0.5);
-  --thinking-content-text: #4c1d95;
-  --thinking-scrollbar: rgba(139, 92, 246, 0.2);
-  --thinking-scrollbar-hover: rgba(139, 92, 246, 0.4);
+  --thinking-border: rgba(0, 0, 0, 0.1);
+  --thinking-hover: rgba(0, 0, 0, 0.04);
+  --thinking-accent: #6b7280;
+  --thinking-text: #374151;
+  --thinking-muted: #9ca3af;
+  --thinking-content-text: #6b7280;
+  --thinking-scrollbar: rgba(0, 0, 0, 0.15);
+  --thinking-scrollbar-hover: rgba(0, 0, 0, 0.3);
 }
 
 /* Dark mode thinking variables */
 :root.dark {
-  --thinking-bg: linear-gradient(135deg, rgba(91, 33, 182, 0.12) 0%, rgba(147, 51, 234, 0.08) 50%, rgba(168, 85, 247, 0.04) 100%);
-  --thinking-bg-flat: rgba(91, 33, 182, 0.12);
-  --thinking-border: rgba(139, 92, 246, 0.25);
-  --thinking-hover: rgba(139, 92, 246, 0.1);
-  --thinking-accent: #a78bfa;
-  --thinking-text: #c4b5fd;
-  --thinking-muted: #a78bfa80;
-  --thinking-content-bg: rgba(15, 10, 30, 0.3);
-  --thinking-content-text: #ddd6fe;
-  --thinking-scrollbar: rgba(167, 139, 250, 0.2);
-  --thinking-scrollbar-hover: rgba(167, 139, 250, 0.4);
+  --thinking-border: rgba(255, 255, 255, 0.12);
+  --thinking-hover: rgba(255, 255, 255, 0.06);
+  --thinking-accent: #9ca3af;
+  --thinking-text: #d1d5db;
+  --thinking-muted: #6b7280;
+  --thinking-content-text: #9ca3af;
+  --thinking-scrollbar: rgba(255, 255, 255, 0.15);
+  --thinking-scrollbar-hover: rgba(255, 255, 255, 0.3);
 }
 
 /* Panel container */
 .thinking-panel {
-  background: var(--thinking-bg);
-  background-color: var(--thinking-bg-flat);
+  background: transparent;
 }
 
 /* Header */
 .thinking-panel-header {
   font-family: var(--font-inter);
+  font-size: 0.875rem;
+  color: var(--thinking-accent);
+  border-radius: 6px;
+}
+
+.thinking-panel-header:hover .thinking-label {
+  color: var(--thinking-text);
+}
+
+.thinking-chevron {
+  color: var(--thinking-muted);
+}
+
+.thinking-label {
+  color: var(--thinking-accent);
+  transition: color 0.15s ease;
+}
+
+/* Shimmering label while thinking streams in */
+.thinking-shimmer {
+  background: linear-gradient(90deg, var(--thinking-muted) 0%, var(--thinking-text) 45%, var(--thinking-muted) 90%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: thinking-shimmer-sweep 1.8s linear infinite;
+}
+
+@keyframes thinking-shimmer-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 /* Scroll container */
 .thinking-scroll-container {
-  max-height: 400px;
+  max-height: 320px;
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;
-  background: var(--thinking-content-bg);
+  margin: 0.25rem 0 0.25rem 0.4rem;
+  padding-left: 0.9rem;
+  border-left: 2px solid var(--thinking-border);
 
   /* Custom scrollbar */
   scrollbar-width: thin;
@@ -850,7 +875,7 @@ details.thinking-block> :not(summary) {
 
 .thinking-prose code {
   font-size: 0.8em !important;
-  background: rgba(139, 92, 246, 0.1) !important;
+  background: var(--thinking-hover) !important;
   border-color: var(--thinking-border) !important;
   color: var(--thinking-text) !important;
 }
@@ -876,38 +901,6 @@ details.thinking-block> :not(summary) {
   51%, 100% { opacity: 0; }
 }
 
-/* Live dot */
-.thinking-live-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: #22c55e;
-  border-radius: 50%;
-  margin-right: 4px;
-  vertical-align: middle;
-  animation: thinking-live-pulse 1.5s ease-in-out infinite;
-}
-
-@keyframes thinking-live-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.75); }
-}
-
-/* Badge styling */
-.thinking-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 2px 8px;
-  border-radius: 9999px;
-  font-size: 11px;
-  font-weight: 500;
-  font-family: var(--font-inter);
-  background: rgba(139, 92, 246, 0.08);
-  border: 1px solid var(--thinking-border);
-  white-space: nowrap;
-}
-
 /* Responsive */
 @media (max-width: 640px) {
   .thinking-scroll-container {
@@ -916,11 +909,6 @@ details.thinking-block> :not(summary) {
 
   .thinking-prose {
     font-size: 0.8125rem !important;
-  }
-
-  .thinking-badge {
-    font-size: 10px;
-    padding: 1px 6px;
   }
 }
 
@@ -931,8 +919,10 @@ details.thinking-block> :not(summary) {
     opacity: 1;
   }
 
-  .thinking-live-dot {
+  .thinking-shimmer {
     animation: none;
+    background: none;
+    color: var(--thinking-accent);
   }
 
   .thinking-scroll-container {

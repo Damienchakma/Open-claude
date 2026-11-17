@@ -1,0 +1,9 @@
+export const exampleConversation = {
+    title: 'A little clarity for your next project',
+    messages: [
+        { role: 'user', content: 'Help me turn a big idea into a small, achievable first step.', metadata: { example: true } },
+        { role: 'assistant', content: 'Absolutely. A useful first step is not the most impressive one — it is the one that helps you learn something.\n\n### Start with one clear question\n\nAsk yourself: **What would make this idea valuable to one person?** Then work backward from that answer.\n\n1. Describe the person you want to help.\n2. Pick one problem they face.\n3. Make the smallest version that solves it.\n\n| Instead of… | Try… |\n| --- | --- |\n| Building every feature | Testing one useful interaction |\n| Planning for every user | Talking to one real person |\n| Waiting for a perfect launch | Sharing a working draft |\n\nHere is a simple way to keep track of that first step:\n\n```javascript\nconst firstStep = {\n  person: "Someone with a specific problem",\n  problem: "One thing that slows them down",\n  experiment: "A small, working draft",\n};\n\nfunction isFocused(step) {\n  return Object.values(step).every(Boolean);\n}\n```\n\n> Small steps are a way to get better information, not a way to think smaller.\n\nWhat is the idea you have in mind?', metadata: { example: true } },
+        { role: 'user', content: 'A tool that helps people organize their reading notes.', metadata: { example: true } },
+        { role: 'assistant', content: 'Then I would start with **saving a note and finding it again**. Skip accounts, recommendations, and collaboration for the first experiment.\n\n- Let someone paste a short note.\n- Add a title and a few tags.\n- Make the saved notes searchable.\n\nThat gives you a complete, useful loop to test before adding more. If you want, we can sketch that first screen together.', metadata: { example: true } }
+    ]
+};

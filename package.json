@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
+    "test": "node --test src/lib/chat-ui.test.js src/lib/llm/clients.test.js src/lib/mcp.test.js",
+    "test:ui": "node scripts/test-ui.mjs",
     "preview": "vite preview",
     "copy-assets": "node scripts/copy-assets.mjs"
   },

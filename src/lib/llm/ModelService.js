@@ -1,5 +1,6 @@
 // Model Discovery Service - Dynamic capability detection
 // Dynamically extracts modalities and capabilities directly from provider API metadata
+import { PROVIDERS, providerInfo, compatibleProviders } from './providers.js';
 
 // Dynamic semantic pattern matching for models when API metadata needs augmentation
 const VISION_PATTERNS = {
@@ -401,6 +402,7 @@ export class ModelService {
                            !id.includes('guard') &&
                            !id.includes('embed') &&
                            !id.includes('tts') &&
+                           !id.includes('orpheus') &&
                            !id.includes('audio');
                 })
                 .map(model => ({
@@ -415,13 +417,9 @@ export class ModelService {
                 .sort((a, b) => a.id.localeCompare(b.id));
 
             const finalModels = models.length > 0 ? models : [
-                { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
-                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
-                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
-                { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
-                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
-                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') },
-                { id: 'qwen-2.5-32b', name: 'Qwen 2.5 32B', provider: 'groq', capabilities: getModelCapabilities('qwen-2.5-32b', 'groq') }
+                { id: 'openai/gpt-oss-120b', name: 'GPT OSS 120B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('openai/gpt-oss-120b', 'groq') },
+                { id: 'openai/gpt-oss-20b', name: 'GPT OSS 20B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('openai/gpt-oss-20b', 'groq') },
+                { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B', provider: 'groq', capabilities: getModelCapabilities('qwen/qwen3.8-27b', 'groq') }
             ];
 
             this.cache.groq = {
@@ -433,13 +431,9 @@ export class ModelService {
         } catch (error) {
             console.error('Error fetching Groq models:', error);
             return [
-                { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', provider: 'groq', capabilities: getModelCapabilities('llama-3.3-70b-versatile', 'groq') },
-                { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', provider: 'groq', capabilities: getModelCapabilities('llama-3.1-8b-instant', 'groq') },
-                { id: 'llama-3.2-11b-vision-preview', name: 'Llama 3.2 11B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-11b-vision-preview', 'groq') },
-                { id: 'llama-3.2-90b-vision-preview', name: 'Llama 3.2 90B Vision Preview', provider: 'groq', capabilities: getModelCapabilities('llama-3.2-90b-vision-preview', 'groq') },
-                { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Distill 70B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('deepseek-r1-distill-llama-70b', 'groq') },
-                { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B 32k', provider: 'groq', capabilities: getModelCapabilities('mixtral-8x7b-32768', 'groq') },
-                { id: 'qwen-2.5-32b', name: 'Qwen 2.5 32B', provider: 'groq', capabilities: getModelCapabilities('qwen-2.5-32b', 'groq') }
+                { id: 'openai/gpt-oss-120b', name: 'GPT OSS 120B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('openai/gpt-oss-120b', 'groq') },
+                { id: 'openai/gpt-oss-20b', name: 'GPT OSS 20B (Thinking)', provider: 'groq', capabilities: getModelCapabilities('openai/gpt-oss-20b', 'groq') },
+                { id: 'qwen/qwen3.8-27b', name: 'Qwen 3.8 27B', provider: 'groq', capabilities: getModelCapabilities('qwen/qwen3.8-27b', 'groq') }
             ];
         }
     }
@@ -568,8 +562,7 @@ export class ModelService {
             const finalModels = models.length > 0 ? models : [
                 { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-flash', 'gemini') },
                 { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.0-flash', 'gemini') },
-                { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-flash', 'gemini') },
-                { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-pro', 'gemini') }
+                { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-pro', 'gemini') }
             ];
 
             this.cache.gemini = {
@@ -583,9 +576,51 @@ export class ModelService {
             return [
                 { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-flash', 'gemini') },
                 { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.0-flash', 'gemini') },
-                { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-flash', 'gemini') },
-                { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-1.5-pro', 'gemini') }
+                { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-pro', 'gemini') }
             ];
+        }
+    }
+
+    // Anthropic model list; failures return [] so the UI asks for a model ID rather than inventing one.
+    async fetchAnthropicModels(apiKey) {
+        if (!apiKey) return [];
+        if (this.cache.anthropic?.models && Date.now() - this.cache.anthropic.timestamp < this.CACHE_DURATION) return this.cache.anthropic.models;
+        try {
+            const response = await fetch('https://api.anthropic.com/v1/models?limit=100', { headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' } });
+            if (!response.ok) throw new Error(`Anthropic models request failed (${response.status})`);
+            const models = ((await response.json()).data || []).map(model => ({ id: model.id, name: model.display_name || model.id, provider: 'anthropic', capabilities: { ...getModelCapabilities(model.id, 'anthropic'), image: true } }));
+            this.cache.anthropic = { models, timestamp: Date.now() };
+            return models;
+        } catch (error) {
+            console.error('Error fetching Anthropic models:', error);
+            return [];
+        }
+    }
+
+    // GET {baseUrl}/models for OpenAI-compatible providers (Together returns a bare array).
+    async fetchCompatibleModels(provider, baseUrl, apiKey) {
+        if (!baseUrl) return [];
+        const cached = this.cache[provider];
+        if (cached?.models && cached.baseUrl === baseUrl && Date.now() - cached.timestamp < this.CACHE_DURATION) return cached.models;
+        try {
+            const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/models`, { headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {} });
+            if (!response.ok) throw new Error(`${provider} models request failed (${response.status})`);
+            const data = await response.json();
+            const models = (Array.isArray(data) ? data : data.data || [])
+                .filter(model => model.id && !/embed|whisper|tts|guard|rerank|moderation|audio|transcri|image-gen|flux|stable-diffusion/i.test(model.id) && (!model.type || ['chat', 'language'].includes(model.type)))
+                .map(model => ({
+                    id: model.id,
+                    name: model.name || model.display_name || model.id,
+                    provider,
+                    contextWindow: model.context_length || model.context_window || model.max_context_length || undefined,
+                    capabilities: { ...getModelCapabilities(model, provider), ...(model.architecture?.input_modalities?.includes('image') || model.capabilities?.vision ? { image: true } : {}) }
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            this.cache[provider] = { models, timestamp: Date.now(), baseUrl };
+            return models;
+        } catch (error) {
+            console.error(`Error fetching ${provider} models:`, error);
+            return [];
         }
     }
 
@@ -601,36 +636,19 @@ export class ModelService {
     }
 
     // Get all available models from all providers
-    async getAllModels(apiKeys) {
-        const allModels = {
-            groq: [],
-            ollama: [],
-            lmstudio: [],
-            openai: [],
-            gemini: []
+    async getAllModels(apiKeys, { customBaseUrl = '' } = {}) {
+        const allModels = Object.fromEntries(PROVIDERS.map(provider => [provider.id, []]));
+        const jobs = {
+            openai: apiKeys.openai && this.fetchOpenAIModels(apiKeys.openai),
+            anthropic: apiKeys.anthropic && this.fetchAnthropicModels(apiKeys.anthropic),
+            groq: apiKeys.groq && this.fetchGroqModels(apiKeys.groq),
+            gemini: apiKeys.gemini && this.fetchGeminiModels(apiKeys.gemini),
+            ollama: this.fetchOllamaModels(),
+            lmstudio: this.fetchLMStudioModels(),
+            custom: customBaseUrl && this.fetchCompatibleModels('custom', customBaseUrl, apiKeys.custom)
         };
-
-        // Fetch OpenAI models dynamically
-        if (apiKeys.openai) {
-            allModels.openai = await this.fetchOpenAIModels(apiKeys.openai);
-        }
-
-        // Fetch Groq models
-        if (apiKeys.groq) {
-            allModels.groq = await this.fetchGroqModels(apiKeys.groq);
-        }
-
-        // Fetch Ollama models
-        allModels.ollama = await this.fetchOllamaModels();
-
-        // Fetch LM Studio models
-        allModels.lmstudio = await this.fetchLMStudioModels();
-
-        // Fetch Gemini models dynamically
-        if (apiKeys.gemini) {
-            allModels.gemini = await this.fetchGeminiModels(apiKeys.gemini);
-        }
-
+        for (const id of compatibleProviders) if (apiKeys[id]) jobs[id] = this.fetchCompatibleModels(id, providerInfo(id).baseUrl, apiKeys[id]);
+        await Promise.all(Object.entries(jobs).filter(([, job]) => job).map(async ([id, job]) => { allModels[id] = await job; }));
         return allModels;
     }
 }

@@ -1,5 +1,22 @@
 // LLM Client Factory with Universal Industry-Standard Reasoning Detection
 // Supports API-level reasoning_content/reasoning/thinking/thought AND live tag streaming (<think>, <thinking>)
+import { providerInfo } from './providers.js';
+
+export async function* readStreamLines(stream) {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+            if (lines.length) yield lines.map(line => line.replace(/\r$/, ''));
+            if (done) { if (buffer) yield [buffer]; break; }
+        }
+    } finally { reader.releaseLock(); }
+}
 
 const THINKING_FIELDS = [
     'reasoning_content',
@@ -230,10 +247,12 @@ class StreamingTagParser {
 }
 
 export class LLMFactory {
-    static getClient(provider, apiKey) {
+    static getClient(provider, apiKey, options = {}) {
         switch (provider) {
             case 'openai':
                 return new OpenAIClient(apiKey);
+            case 'anthropic':
+                return new AnthropicClient(apiKey);
             case 'groq':
                 return new GroqClient(apiKey);
             case 'gemini':
@@ -242,8 +261,13 @@ export class LLMFactory {
                 return new OllamaClient();
             case 'lmstudio':
                 return new LMStudioClient();
-            default:
-                throw new Error(`Unknown provider: ${provider}`);
+            case 'custom':
+                return new OpenAICompatibleClient(apiKey, { baseUrl: options.baseUrl, label: 'Custom endpoint', requireKey: false });
+            default: {
+                const info = providerInfo(provider);
+                if (!info?.baseUrl) throw new Error(`Unknown provider: ${provider}`);
+                return new OpenAICompatibleClient(apiKey, { baseUrl: info.baseUrl, label: info.name, defaultModel: info.defaultModel, headers: provider === 'openrouter' ? { 'X-Title': 'Open Claude' } : {} });
+            }
         }
     }
 }
@@ -258,6 +282,15 @@ class BaseClient {
     }
 }
 
+const accumulateToolCall = (slots, call) => {
+    const slot = slots[call.index] || (slots[call.index] = { id: '', type: 'function', function: { name: '', arguments: '' } });
+    if (call.id) slot.id = call.id;
+    if (call.function?.name) slot.function.name += call.function.name;
+    if (call.function?.arguments) slot.function.arguments += call.function.arguments;
+};
+
+const completeToolCalls = slots => slots.filter(call => call?.id && call.function.name);
+
 // OpenAI Client with comprehensive detection
 export class OpenAIClient extends BaseClient {
     async streamChat(messages, onChunk, modelId = 'gpt-4o', options = {}) {
@@ -267,6 +300,8 @@ export class OpenAIClient extends BaseClient {
 
         // Format messages - handle images if present
         const formattedMessages = messages.map(m => {
+            if (m.role === 'tool') return { role: 'tool', tool_call_id: m.tool_call_id, content: m.content };
+            if (m.tool_calls) return { role: m.role, content: m.content || '', tool_calls: m.tool_calls };
             // Check if message has images
             if (m.images && m.images.length > 0) {
                 const content = [
@@ -298,7 +333,8 @@ export class OpenAIClient extends BaseClient {
             body: JSON.stringify({
                 model: modelId,
                 messages: formattedMessages,
-                stream: true
+                stream: true,
+                ...(options.tools?.length ? { tools: options.tools } : {})
             }),
             signal: options.signal
         });
@@ -308,20 +344,15 @@ export class OpenAIClient extends BaseClient {
             throw new Error(err.error?.message || 'OpenAI API Error');
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+        const toolCallSlots = [];
+        for await (const lines of readStreamLines(response.body)) {
 
             for (const line of lines) {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                     try {
                         const data = JSON.parse(line.slice(6));
+
+                        for (const call of data.choices?.[0]?.delta?.tool_calls || []) accumulateToolCall(toolCallSlots, call);
 
                         // LAYER 1: Check API-level reasoning fields (reasoning_content, reasoning, thinking, etc.)
                         const extracted = extractThinking(data.choices?.[0]);
@@ -361,19 +392,39 @@ export class OpenAIClient extends BaseClient {
         for (const result of flushed) {
             onChunk(result.content, { isThinking: result.isThinking });
         }
+
+        return { toolCalls: completeToolCalls(toolCallSlots) };
     }
 }
 
-// Groq Client with universal detection, robust multimodal support, and DeepSeek reasoning
-export class GroqClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'llama-3.3-70b-versatile', options = {}) {
-        if (!this.apiKey) throw new Error('Groq API Key missing. Please add your Groq API key in Settings.');
+// OpenAI-compatible chat completions (Groq, OpenRouter, Mistral, DeepSeek, xAI, Together, Cerebras, Fireworks, custom)
+export class OpenAICompatibleClient extends BaseClient {
+    constructor(apiKey, { baseUrl, label = 'Provider', defaultModel = '', requireKey = true, headers = {} } = {}) {
+        super(apiKey);
+        this.baseUrl = (baseUrl || '').replace(/\/+$/, '');
+        this.label = label;
+        this.defaultModel = defaultModel;
+        this.requireKey = requireKey;
+        this.headers = headers;
+    }
+
+    requestExtras() {
+        return {};
+    }
+
+    async streamChat(messages, onChunk, modelId, options = {}) {
+        if (this.requireKey && !this.apiKey) throw new Error(`${this.label} API key missing. Please add your ${this.label} API key in Settings.`);
+        if (!this.baseUrl) throw new Error(`${this.label} base URL missing. Add it in Settings › Connections.`);
 
         const tagParser = new StreamingTagParser();
-        const cleanModelId = (modelId || 'llama-3.3-70b-versatile').trim();
+        const cleanModelId = (modelId || this.defaultModel).trim();
+        if (!cleanModelId) throw new Error(`Choose a ${this.label} model in Settings.`);
 
         // Format messages - handle multimodal images, system messages, and empty content edge cases
         const formattedMessages = messages.map(m => {
+            // Tool-calling turns must survive formatting untouched
+            if (m.role === 'tool') return { role: 'tool', tool_call_id: m.tool_call_id, content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content ?? '') };
+            if (m.tool_calls) return { role: m.role, content: typeof m.content === 'string' ? m.content : '', tool_calls: m.tool_calls };
             // Case 1: Already an array of content parts (from ChatMode)
             if (Array.isArray(m.content)) {
                 const filteredParts = m.content.filter(part => {
@@ -434,46 +485,43 @@ export class GroqClient extends BaseClient {
 
         // Filter out completely empty messages (which cause Groq 400 errors)
         const validMessages = formattedMessages.filter(m => {
+            if (m.tool_calls?.length || m.role === 'tool') return true;
             if (!m.content) return false;
             if (typeof m.content === 'string' && !m.content.trim()) return false;
             if (Array.isArray(m.content) && m.content.length === 0) return false;
             return true;
         });
 
-        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const response = await fetch(`${this.baseUrl}/chat/completions`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey.trim()}`
+                ...(this.apiKey ? { 'Authorization': `Bearer ${this.apiKey.trim()}` } : {}),
+                ...this.headers
             },
             body: JSON.stringify({
                 model: cleanModelId,
                 messages: validMessages,
-                stream: true
+                stream: true,
+                ...(options.tools?.length ? { tools: options.tools } : {}),
+                ...this.requestExtras(cleanModelId)
             }),
             signal: options.signal
         });
 
         if (!response.ok) {
-            let errorDetails = 'Groq API Error';
+            let errorDetails = `${this.label} API error`;
             try {
                 const err = await response.json();
                 errorDetails = err.error?.message || err.message || JSON.stringify(err);
             } catch {
-                errorDetails = `Groq API Error (${response.status}: ${response.statusText})`;
+                errorDetails = `${this.label} API error (${response.status}: ${response.statusText})`;
             }
             throw new Error(errorDetails);
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+        const toolCallSlots = [];
+        for await (const lines of readStreamLines(response.body)) {
 
             for (const line of lines) {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
@@ -481,6 +529,9 @@ export class GroqClient extends BaseClient {
                         const data = JSON.parse(line.slice(6));
                         const choice = data.choices?.[0];
                         const delta = choice?.delta;
+
+                        // Accumulate streamed function-call fragments by index
+                        for (const call of delta?.tool_calls || []) accumulateToolCall(toolCallSlots, call);
 
                         // LAYER 1: DeepSeek/Groq reasoning stream (reasoning or reasoning_content)
                         if (delta?.reasoning || delta?.reasoning_content) {
@@ -512,7 +563,7 @@ export class GroqClient extends BaseClient {
                             onChunk('', { thinkingTokens: tokens });
                         }
                     } catch (e) {
-                        console.error('Error parsing Groq chunk', e);
+                        console.error(`Error parsing ${this.label} chunk`, e);
                     }
                 }
             }
@@ -522,17 +573,91 @@ export class GroqClient extends BaseClient {
         for (const result of flushed) {
             onChunk(result.content, { isThinking: result.isThinking });
         }
+        return { toolCalls: completeToolCalls(toolCallSlots) };
+    }
+}
+
+export class GroqClient extends OpenAICompatibleClient {
+    constructor(apiKey) {
+        super(apiKey, { baseUrl: 'https://api.groq.com/openai/v1', label: 'Groq', defaultModel: 'openai/gpt-oss-120b' });
+    }
+
+    requestExtras(modelId) {
+        // Qwen/MiniMax/Muse emit no reasoning at the default effort; gpt-oss reasons by default and rejects reasoning_format.
+        return /qwen|minimax|muse/i.test(modelId)
+            ? { reasoning_format: 'parsed', reasoning_effort: 'medium' }
+            : {};
+    }
+}
+
+const textOf = content => typeof content === 'string' ? content : (content || []).filter(part => part.type === 'text').map(part => part.text).join('\n');
+
+function anthropicImage(url) {
+    const match = /^data:([^;]+);base64,(.*)$/s.exec(url || '');
+    return match ? { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } } : { type: 'image', source: { type: 'url', url } };
+}
+
+export function toAnthropicMessages(messages) {
+    const system = messages.filter(message => message.role === 'system').map(message => textOf(message.content)).filter(Boolean).join('\n\n');
+    const converted = messages.filter(message => message.role !== 'system').map(message => {
+        const parts = Array.isArray(message.content)
+            ? message.content.map(part => part.type === 'image_url' ? anthropicImage(part.image_url?.url) : part.type === 'text' && part.text?.trim() ? { type: 'text', text: part.text } : part.type === 'tool_use' || part.type === 'tool_result' ? part : null).filter(Boolean)
+            : message.content?.trim() ? [{ type: 'text', text: message.content }] : [];
+        for (const image of message.images || []) parts.push(anthropicImage(image.dataUrl || `data:${image.type || 'image/png'};base64,${image.base64}`));
+        return { role: message.role === 'assistant' ? 'assistant' : 'user', content: parts };
+    }).filter(message => message.content.length);
+    return { system, messages: converted };
+}
+
+// Anthropic Messages API; direct browser access must be opted into with a dedicated header.
+export class AnthropicClient extends BaseClient {
+    async streamChat(messages, onChunk, modelId = 'claude-sonnet-4-5', options = {}) {
+        if (!this.apiKey) throw new Error('Anthropic API key missing. Please add your Anthropic API key in Settings.');
+        const { system, messages: converted } = toAnthropicMessages(messages);
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': this.apiKey.trim(),
+                'anthropic-version': '2023-06-01',
+                'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({ model: modelId, max_tokens: /^claude-3-(opus|sonnet|haiku)/.test(modelId) ? 4096 : 8192, ...(system ? { system } : {}), ...(options.tools?.length ? { tools: options.tools } : {}), messages: converted, stream: true }),
+            signal: options.signal
+        });
+        if (!response.ok) {
+            let detail = `Anthropic API error (${response.status})`;
+            try { detail = (await response.json()).error?.message || detail; } catch { /* keep status text */ }
+            throw new Error(detail);
+        }
+        const toolCalls = [];
+        let openTool = null;
+        for await (const lines of readStreamLines(response.body)) {
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                let event;
+                try { event = JSON.parse(line.slice(6)); } catch { continue; }
+                if (event.type === 'error') throw new Error(event.error?.message || 'Anthropic stream error');
+                if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') openTool = { id: event.content_block.id, name: event.content_block.name, arguments: '' };
+                if (event.type === 'content_block_delta' && event.delta?.type === 'input_json_delta' && openTool) openTool.arguments += event.delta.partial_json || '';
+                if (event.type === 'content_block_stop' && openTool) { toolCalls.push(openTool); openTool = null; }
+                if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') onChunk(event.delta.text, { isThinking: false });
+                if (event.type === 'content_block_delta' && event.delta?.type === 'thinking_delta') onChunk(event.delta.thinking, { isThinking: true });
+                if (event.type === 'message_delta' && event.delta?.stop_reason) onChunk('', { finishReason: event.delta.stop_reason });
+            }
+        }
+        return { toolCalls };
     }
 }
 
 // Gemini Client with universal detection
 export class GeminiClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'gemini-1.5-flash', options = {}) {
+    async streamChat(messages, onChunk, modelId = 'gemini-2.5-flash', options = {}) {
         if (!this.apiKey) throw new Error('Gemini API Key missing');
 
         // Sanitize modelId - strip 'models/' prefix if present
-        let cleanModelId = (modelId || 'gemini-1.5-flash').trim().replace(/^models\//, '');
-        if (!cleanModelId) cleanModelId = 'gemini-1.5-flash';
+        let cleanModelId = (modelId || 'gemini-2.5-flash').trim().replace(/^models\//, '');
+        if (!cleanModelId) cleanModelId = 'gemini-2.5-flash';
 
         const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelId}:streamGenerateContent`);
         url.searchParams.set('key', this.apiKey);
@@ -778,6 +903,13 @@ export class OllamaClient extends BaseClient {
         const tagParser = new StreamingTagParser();
 
         const formattedMessages = messages.map(m => {
+            if (Array.isArray(m.content)) {
+                return {
+                    role: m.role,
+                    content: m.content.filter(part => part.type === 'text').map(part => part.text).join('\n'),
+                    images: m.content.filter(part => part.type === 'image_url').map(part => part.image_url.url.replace(/^data:[^;]+;base64,/, ''))
+                };
+            }
             const msg = { role: m.role, content: m.content };
 
             if (m.images && m.images.length > 0) {
@@ -816,15 +948,7 @@ export class OllamaClient extends BaseClient {
             throw new Error('Ollama API Error - is Ollama running?');
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+        for await (const lines of readStreamLines(response.body)) {
 
             for (const line of lines) {
                 if (line.trim()) {
@@ -903,15 +1027,7 @@ export class LMStudioClient extends BaseClient {
             throw new Error('LM Studio API Error - is LM Studio running with a model loaded?');
         }
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            const chunk = decoder.decode(value);
-            const lines = chunk.split('\n');
+        for await (const lines of readStreamLines(response.body)) {
 
             for (const line of lines) {
                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {

@@ -4,6 +4,7 @@ import { Send, FileCode, Play, Terminal, Code, Monitor, Loader2, Plus, RefreshCw
 import { useBuild } from '../context/BuildContext';
 import { useChat } from '../context/ChatContext';
 import { LLMFactory } from '../lib/llm/clients';
+import { providerInfo, providerName } from '../lib/llm/providers';
 import { generatePreviewHTML } from '../utils/preview-generator';
 import MonacoEditor from '@monaco-editor/react';
 
@@ -24,7 +25,8 @@ export default function BuildMode() {
     const {
         selectedProvider,
         selectedModel,
-        apiKeys
+        apiKeys,
+        customBaseUrl
     } = useChat();
 
     const [input, setInput] = useState('');
@@ -53,10 +55,13 @@ export default function BuildMode() {
 
         try {
             // Get client
-            if (!apiKeys[selectedProvider]) {
-                throw new Error(`Please set your ${selectedProvider} API key in settings`);
+            if (providerInfo(selectedProvider)?.key && !apiKeys[selectedProvider]) {
+                throw new Error(`Please set your ${providerName(selectedProvider)} API key in settings`);
             }
-            const client = LLMFactory.getClient(selectedProvider, apiKeys[selectedProvider]);
+            if (selectedProvider === 'custom' && !customBaseUrl) {
+                throw new Error('Set a base URL for the custom provider in settings');
+            }
+            const client = LLMFactory.getClient(selectedProvider, apiKeys[selectedProvider], { baseUrl: customBaseUrl });
 
             // Construct System Prompt
             const systemPrompt = `You are a code generation AI. Generate React components based on user requests.

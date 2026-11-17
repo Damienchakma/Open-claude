@@ -2,8 +2,9 @@
 // Supports topic detection, recency filtering, and auto-optimization
 
 export class TavilyClient {
-    constructor(apiKey) {
+    constructor(apiKey, signal = undefined) {
         this.apiKey = apiKey;
+        this.signal = signal;
     }
 
     /**
@@ -31,7 +32,8 @@ export class TavilyClient {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(searchParams)
+            body: JSON.stringify(searchParams),
+            signal: this.signal
         });
 
         if (!response.ok) {

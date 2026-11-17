@@ -1,181 +1,205 @@
 <div align="center">
 
-<img src="public/claude-logo.svg" alt="Open Claude Logo" width="96" height="96" />
+<img src="public/claude-logo.svg" alt="Open Claude logo" width="88" height="88" />
 
 # Open Claude
 
-### **Next-Generation Open-Source AI Workspace with Multimodal Vision, Live Webcam Capture, Deep Research, CoT Reasoning Stream, and Multi-CDN Resilient Artifacts**
+**A frontend-only AI chat workspace inspired by the Claude interface.**
+Bring your own API keys. No backend, no database, no accounts, no subscriptions.
 
-[![GitHub Stars](https://img.shields.io/github/stars/Damienchakma/Open-claude?style=for-the-badge&logo=github&color=d97757)](https://github.com/Damienchakma/Open-claude/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/Damienchakma/Open-claude?style=for-the-badge&logo=github&color=d97757)](https://github.com/Damienchakma/Open-claude/network/members)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-[![React](https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5.1-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-
-<p align="center">
-  <b>Open Claude</b> is an <b>extensible</b>, <b>feature-rich</b>, and <b>user-friendly</b> AI workspace inspired by Anthropic's Claude chatbot UI. It connects directly to cloud LLM providers (<b>Google Gemini</b>, <b>Groq</b>, <b>OpenAI</b>) and local offline runners (<b>Ollama</b>, <b>LM Studio</b>) with built-in Deep Research, real-time CoT thinking streams, live webcam photo capture, and interactive sandboxed artifacts.
-</p>
-
-[✨ Key Features](#-key-features) • [📸 Showcase](#-interface-showcase) • [🤖 Supported Providers](#-supported-providers--models) • [🚀 Quick Start](#-quick-start) • [⚙️ Configuration](#-configuration--api-keys) • [🤝 Contributing](#-contributing)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 
 </div>
 
 ---
 
-## 📸 Interface Showcase
+Open Claude is an independently written React application that recreates the look and feel of
+[claude.ai](https://claude.ai) while talking **directly from your browser** to the model provider you
+choose. Every conversation, setting and API key stays in your browser's `localStorage`; nothing is
+sent to any server operated by this project, because there is no server.
 
-<div align="center">
+It is not affiliated with Anthropic. "Claude" and the Claude interface are Anthropic's; this project
+is a fan-made, original implementation inspired by it.
 
-### 🖥️ Main Workspace & Time-Aware Interface
-> Dynamic context greetings (*"Burning the midnight oil?"*), integrated suggestion chips, live vision capability badges, web search toggle, and instant camera / file upload.
+## Screenshots
 
-<img src="screenshots/open_claude_workspace.jpg" alt="Open Claude Main Workspace" width="95%" style="border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid #333;" />
+All screenshots below were captured from this repository running against live Groq inference
+(November 2026), not mockups.
 
-<br/><br/>
+| Welcome screen | Conversation |
+| --- | --- |
+| [![Welcome screen with suggestion chips](screenshots/live-empty.png)](screenshots/live-empty.png) | [![Conversation with markdown, code block and response actions](screenshots/live-conversation.png)](screenshots/live-conversation.png) |
 
-### 🎮 Interactive Split-Screen Artifacts Sandbox
-> Run complete HTML5 games, Canvas applications, interactive React components, and deep research papers side-by-side with real-time code inspection and execution.
+| Reasoning, folded like Claude | Provider connections |
+| --- | --- |
+| [![Collapsed "Thought for" row with expanded reasoning](screenshots/live-thinking.png)](screenshots/live-thinking.png) | [![Settings dialog, Connections tab, masked API key](screenshots/live-settings.png)](screenshots/live-settings.png) |
 
-<img src="screenshots/open_claude_artifacts_preview.jpg" alt="Interactive Artifacts Runner (Flappy Bird Deluxe Game)" width="95%" style="border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid #333;" />
+| Artifacts side panel | MCP servers |
+| --- | --- |
+| [![Artifact panel with Preview/Code tabs and a live HTML game](screenshots/live-artifact.png)](screenshots/live-artifact.png) | [![Settings dialog, MCP servers tab, connected server with tool count](screenshots/desktop-settings-mcp.png)](screenshots/desktop-settings-mcp.png) |
 
-</div>
+## What it does
 
----
+- **Streaming chat** with a stop button, incremental rendering, and honest error alerts (provider
+  failures are shown as errors, never faked as assistant messages).
+- **Reasoning display** for models that stream thinking tokens (e.g. Groq's `openai/gpt-oss-*` and
+  `qwen/qwen3.8-*`, DeepSeek R1, Anthropic extended thinking). Groq models that hide reasoning at
+  the default effort are sent `reasoning_format: parsed` with an explicit effort so their thinking
+  actually arrives. While thinking arrives you see a shimmering "Thinking…" row; afterwards it
+  folds into a muted "Thought for *n*s" row you can expand.
+- **Markdown rendering**: GFM tables, lists, blockquotes, and syntax-highlighted code blocks with
+  copy and download buttons.
+- **Retry, copy and feedback** actions on responses. Thumbs up/down are stored for the session only
+  and are never sent anywhere.
+- **Attachments**: images (for vision-capable models) and text-based files, read entirely in the
+  browser. Unsupported binary formats are rejected with an explanation instead of being silently
+  dropped.
+- **Web search and deep-research workflows** powered by your own [Tavily](https://tavily.com) key,
+  with inline citations. Trigger a long-form report with a prompt starting `deep research:`.
+- **Artifacts** in a Claude-style side panel: title and type header, Preview/Code tabs, copy,
+  download, refresh and open-in-new-tab. Detection is a single shared parser, so any model that
+  emits a complete HTML/JSX/SVG code block gets a working artifact instead of raw code in chat;
+  previews run inside a sandboxed iframe with no access to the app's storage.
+- **MCP servers**: connect Streamable HTTP MCP servers in Settings, test them, and their tools are
+  offered to the model during chat (OpenAI-compatible providers and Anthropic). Tool results are
+  fed back into the conversation automatically, with a live "Using …" status row.
+- **Chat history** in `localStorage`: rename, delete, search, switch, JSON export and import.
+  Corrupted saved history is preserved, not overwritten, until you import a backup or explicitly
+  delete it.
+- **Incognito chats** that are never persisted.
+- **Light / dark / system themes**, a custom system prompt, and a display name for greetings.
+- **Model picker** with search across every connected provider, showing context size and vision
+  capability per model.
+- **Responsive layout** down to small phones, with a drawer sidebar and bounded menus.
 
-## ✨ Key Features
+## Providers
 
-### 📷 Dynamic Multimodal & Live Camera Capture
-- **Live Camera Viewfinder**: Tap the camera icon (📷) to open a built-in webcam capture modal with live viewfinder, front/back camera flipping, and shutter review ("Use Photo" / "Retake").
-- **API-Level Dynamic Vision Detection**: No hardcoded lists — Open Claude dynamically inspects provider API manifests and metadata (e.g. Ollama `details.families`, Gemini multimodal descriptions, LM Studio architectures).
-- **Intelligent Auto-Switching**: When you capture or upload a picture while on a text-only model (e.g., Groq `llama-3.3-70b-versatile`), Open Claude automatically switches to the provider's top vision model (`llama-3.2-11b-vision-preview` / `gpt-4o`).
-- **Clipboard Paste (`Ctrl+V`)**: Paste images or screenshots directly into the prompt box.
+Keys are entered in **Settings → Connections** and stored in your browser. Model lists are fetched
+live from each provider; the defaults below were verified against the providers' catalogs in
+November 2026.
 
----
+| Provider | Auth | Browser (CORS) access | Default model |
+| --- | --- | --- | --- |
+| Anthropic (Claude) | API key | Verified | `claude-sonnet-4-5` |
+| OpenAI | API key | Verified | `gpt-4o` |
+| Google Gemini | API key | Verified | `gemini-2.5-flash` |
+| Groq | API key | Verified, **live-tested** | `openai/gpt-oss-120b` |
+| OpenRouter | API key | Verified | `openrouter/auto` |
+| Mistral AI | API key | Verified | `mistral-large-latest` |
+| DeepSeek | API key | Verified | `deepseek-chat` |
+| xAI (Grok) | API key | Verified | `grok-4` |
+| Together AI | API key | Verified | `meta-llama/Llama-3.3-70B-Instruct-Turbo` |
+| Cerebras | API key | Verified | `llama-3.3-70b` |
+| Fireworks AI | API key | Verified | `accounts/fireworks/models/llama-v3p3-70b-instruct` |
+| Custom OpenAI-compatible endpoint | Optional key + base URL | Depends on your server | your choice |
+| Ollama (local) | none | Requires Ollama running with CORS enabled | `llama3` |
+| LM Studio (local) | none | Requires LM Studio server with CORS enabled | `local-model` |
 
-### 📦 Universal Resilient Artifact Runner
-- **Interactive Sandbox**: Automatically renders and runs:
-  - **HTML5 & Canvas Games**: Full game loops, Web Audio API procedural sound synthesis, and local storage state (e.g. Flappy Bird Deluxe).
-  - **React / JSX Applications**: Transpiled on-the-fly via Babel Standalone with support for React Hooks, Lucide Icons, and Recharts.
-  - **SVG Graphics**: Visual vector rendering.
-  - **Research Papers**: Formal academic format with one-click PDF download.
-- **Multi-CDN Resilience**: Sequential fallback (unpkg $\rightarrow$ Cloudflare CDNJS $\rightarrow$ jsDelivr) prevents white screens or failures if any individual CDN is blocked or rate-limited.
-- **Universal Tag Parsing**: Flexibly parses `<antArtifact>` tags and code blocks from Claude, Gemini, Groq, OpenAI, and Ollama in any attribute order or format.
+"Verified" means the provider's CORS preflight was checked from a browser origin and the client is
+covered by unit tests. **Only Groq has been exercised end-to-end with live inference in this
+repository's browser tests**; the other cloud providers need your own key to try. Anthropic requests
+include the `anthropic-dangerous-direct-browser-access` header that Anthropic requires for
+client-side calls — use a key you are comfortable exposing to a browser, and rotate it if leaked.
 
----
+## MCP servers
 
-### 🧠 Universal CoT Thinking & Reasoning Stream
-- **Live Streamed Thoughts**: Real-time token-by-token rendering of `<think>` and `<thinking>` tags alongside native API reasoning fields (`reasoning_content` / `reasoning`).
-- **DeepSeek R1 on Groq & Ollama**: Seamlessly view DeepSeek's step-by-step mathematical and logical reasoning.
-- **Metrics & Tokens**: Displays total reasoning token count and elapsed thinking duration.
-- **Collapsible Design**: Elegant gradient accordion to expand or collapse internal monologue.
+Open Claude speaks the MCP **Streamable HTTP** transport (JSON-RPC over POST, responses as JSON or
+SSE, `Mcp-Session-Id` kept across requests) directly from the browser tab. Add servers in
+**Settings → MCP servers**, press **Test** to see the tool list or the exact connection error, and
+enable/disable or remove them at any time. Configuration is saved in `localStorage`.
 
----
+During a chat, every enabled server is connected, its tools are flattened into provider tool
+definitions (`server__tool` names), and the model can call them. Results — including tool errors —
+are returned to the model for up to five rounds before the final answer is saved.
 
-### 🔬 Deep Research Scientist Mode
-- **Autonomous Multi-Step Loop**: Type `deep research: <topic>` to trigger an autonomous research agent that formulates sub-queries, queries real-time web databases, gathers evidence, and writes comprehensive multi-page whitepapers.
-- **Formal PDF Export**: Export compiled research reports to PDF with structured abstracts, methodology, analysis, and bibliography.
-- **Verifiable Citations**: Automatic source citation links with verified publisher logos and favicons.
+Honest limits of a backend-free design:
 
----
+- A browser tab cannot spawn processes, so **stdio-only MCP servers do not work directly**. Bridge
+  them to HTTP (e.g. `mcp-proxy`) or use a hosted remote endpoint.
+- The server must allow cross-origin browser requests (CORS), including the `Mcp-Session-Id`
+  header. The Test button reports failures instead of pretending the server connected.
+- Tool calling is implemented for OpenAI-compatible providers and Anthropic. Gemini, Ollama and
+  LM Studio clients ignore MCP tools for now.
 
-### 🌐 Intelligent Real-Time Web Search
-- **Tavily API Integration**: Search the live web for breaking news, current events, and documentation.
-- **Smart Query Reformulation**: Contextually optimizes search keywords and strips unnecessary prefixes.
-- **Publisher Logos**: Automatically fetches high-resolution publisher favicons for all referenced sources.
+## Quick start
 
----
-
-## 🤖 Supported Providers & Models
-
-| Provider | Active Available Models | Modality | Speed / Notes |
-| :--- | :--- | :---: | :--- |
-| **Google Gemini** | `gemini-3.7-flash`, `gemini-3.5-flash`, `gemini-2.5-pro`, `gemini-2.5-flash` | Text + Vision + Audio | Natively multimodal, 2M+ token context |
-| **Groq Cloud (LPU)** | `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `llama-3.2-11b-vision-preview`, `llama-3.2-90b-vision-preview`, `deepseek-r1-distill-llama-70b`, `mixtral-8x7b-32768` | Text + Vision + Thinking | Ultra-fast throughput (~500–750 tokens/s) |
-| **OpenAI** | `gpt-5.6`, `gpt-5.2`, `o3-mini`, `o1`, `gpt-4o`, `gpt-4o-mini` | Text + Vision + CoT Reasoning | Frontier reasoning & function calling |
-| **Ollama (Local)** | `llama3.3`, `llama3.2-vision`, `deepseek-r1`, `qwen2.5-vl`, `mistral`, `gemma2` | Text + Vision + Reasoning | 100% private, offline, GPU-accelerated |
-| **LM Studio** | Any loaded GGUF model (`qwen2.5-vl`, `minicpm-v`, `llama3.3`) | Text + Vision | Local inference via `localhost:1234` |
-
----
-
-## 🚀 Quick Start
-
-### 1. Clone & Install
+Requires Node.js 18+.
 
 ```bash
-# Clone the repository
-git clone https://github.com/Damienchakma/Open-claude.git
-cd Open-claude
-
-# Install dependencies
 npm install
-
-# Start the dev server
 npm run dev
 ```
 
-Open **`http://localhost:5173`** in your browser.
+Open http://localhost:5173, then:
 
----
+1. Open **Settings → Connections**.
+2. Pick a provider and paste its API key (Groq keys are free at
+   [console.groq.com/keys](https://console.groq.com/keys)).
+3. Save, choose a model in the composer's model menu, and chat.
 
-## ⚙️ Configuration & API Keys
+For local models, start Ollama (`OLLAMA_ORIGINS=* ollama serve`) or the LM Studio server with CORS
+enabled, then select it as the provider — no key needed.
 
-Click the **Settings** icon (⚙️) in the sidebar or top navigation bar to configure keys:
+Production build: `npm run build`, then serve `dist/` from any static host.
 
-- **Google Gemini**: Get free API key at [Google AI Studio](https://aistudio.google.com/app/apikey)
-- **Groq Cloud**: Get free API key at [Groq Console](https://console.groq.com/keys)
-- **OpenAI**: Get API key at [OpenAI Platform](https://platform.openai.com/api-keys)
-- **Tavily (Web Search)**: Get API key at [Tavily Dashboard](https://tavily.com/)
+## Tests
 
-> [!NOTE]
-> **Privacy First**: All API keys and chat histories are stored **100% locally in your browser (`localStorage`)**. Your keys are never sent to any third-party intermediary server.
+```bash
+npm test          # 33 unit tests: stream parsing, tool-call accumulation, MCP client, import safety
+npm run test:ui -- <path-to-playwright-core/index.js> <path-to-chrome>
+                  # 18 browser groups against intercepted fixtures, incl. a fake MCP server;
+                  # no real credentials used
+GROQ_API_KEY=... node scripts/live-groq.mjs <path-to-playwright-core/index.js> <path-to-chrome>
+                  # 15 live Groq checks: streaming, reasoning, artifacts, retry, multi-turn
+GROQ_API_KEY=... node scripts/live-mcp.mjs <path-to-playwright-core/index.js> <path-to-chrome>
+                  # 4 live checks: real Groq tool calling against a real local MCP HTTP server
+```
 
----
+The UI suites need an already-installed `playwright-core` and a Chrome/Chromium executable; they
+download nothing. The live script reads the key from the environment only and never writes it to
+disk or screenshots.
 
-## ⌨️ Keyboard Shortcuts
+## Privacy and security notes
 
-| Shortcut | Action |
-| :--- | :--- |
-| `Enter` | Send message |
-| `Shift + Enter` | Insert new line in prompt |
-| `Ctrl + V` | Paste image or screenshot directly into prompt |
-| `Space` / `↑` | Jump / flap in game artifacts (e.g. Flappy Bird) |
-| `P` | Pause / resume interactive game artifacts |
+- API keys, chats and settings live in `localStorage` in plain text. Anyone with access to your
+  browser profile can read them. This is inherent to a backend-free design.
+- Requests go straight from your browser to the provider you selected. There is no proxy and no
+  telemetry.
+- Exported chat JSON excludes credentials and internal metadata.
+- Artifact previews run in sandboxed iframes (`allow-scripts` only) and cannot reach the app's
+  storage or origin.
+- If a key is ever exposed (shared screenshot, committed file, pasted chat), rotate it at the
+  provider immediately.
 
----
+## Limitations
 
-## 🛠️ Tech Stack
+- No server-side features: no cross-device sync, no accounts, no sharing links, no usage billing.
+  Subscription plans and paywalls are intentionally absent.
+- Code/Build editor modes exist in the source but are hidden from the UI until implemented; the
+  shipped experience is the chat workspace.
+- There is no toggle for Anthropic extended thinking budget; reasoning is shown whenever the
+  selected model streams it.
+- Provider catalogs change over time. If a default model disappears, pick another in the model
+  menu — the list is fetched live.
+- Web search and research require a Tavily key; without one the toggle explains what is missing
+  instead of pretending to search.
+- MCP is limited to HTTP/SSE servers reachable from the browser with CORS; stdio servers need a
+  bridge, and non-OpenAI/Anthropic providers ignore MCP tools (see above).
 
-- **Frontend**: React 18, Vite 5, JavaScript (ES2024)
-- **Styling**: Tailwind CSS + Custom Humanist Warm Palette
-- **Markdown & Code**: `react-markdown`, `remark-gfm`, `rehype-raw`, `react-syntax-highlighter`
-- **Icons**: Lucide React
-- **PDF Generation**: `jspdf`, `html2canvas`
-- **In-Browser Transpiler**: Babel Standalone (`@babel/standalone`)
+## Project layout
 
----
+```
+src/
+  components/   Chat workspace, composer, messages, thinking row, artifacts, settings
+  context/      Chat, theme and mode state (localStorage-backed)
+  lib/llm/      Provider registry, per-provider clients, model catalog service
+  lib/          Search tool, MCP Streamable HTTP client, chat import/export validation, markdown helpers
+scripts/        Mocked UI suite, live Groq suite, live MCP suite, asset copy helper
+docs/           Claude interface reference notes
+```
 
-## 🤝 Contributing
+## License
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📝 License
-
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
-
----
-
-<div align="center">
-
-Made with ❤️ by [Damien Chakma](https://github.com/Damienchakma)
-
-**[⬆ Back to Top](#open-claude)**
-
-</div>
+MIT — see [LICENSE](LICENSE).

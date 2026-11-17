@@ -1,252 +1,85 @@
-import React from 'react';
+import { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { User, Bot, Copy, Check, Code, ExternalLink } from 'lucide-react';
+import { vscDarkPlus, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { Copy, Check, Code, ArrowUpRight, Download, Pencil, ThumbsUp, ThumbsDown, FileText, RefreshCw } from 'lucide-react';
 import { useChat } from '../context/ChatContext';
+import { useTheme } from '../context/ThemeContext';
 import { CitationDisplay } from './CitationDisplay';
 import { ThinkingDisplay } from './ThinkingDisplay';
+import { downloadText } from '../lib/chat-ui';
 
-export function ChatMessage({ message }) {
-    const isUser = message.role === 'user';
-    const [copiedCode, setCopiedCode] = React.useState(null);
-    const { setCurrentArtifactId, setIsArtifactOpen } = useChat();
-
-    const copyCode = (code, index) => {
-        navigator.clipboard.writeText(code);
-        setCopiedCode(index);
-        setTimeout(() => setCopiedCode(null), 2000);
-    };
-
-    const markdownComponents = {
-        code({ node, inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '');
-            const codeString = String(children).replace(/\n$/, '');
-            const codeIndex = `${message.id}-${codeString.substring(0, 20)}`;
-
-            return !inline && match ? (
-                <div className="relative group my-3">
-                    <div className="flex items-center justify-between bg-[var(--bg-tertiary)] px-3 py-2 rounded-t-md border-b border-[var(--border)]">
-                        <span className="text-xs font-mono text-[var(--text-secondary)]">
-                            {match[1]}
-                        </span>
-                        <button
-                            onClick={() => copyCode(codeString, codeIndex)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs hover:bg-[var(--bg-hover)] rounded transition-colors text-[var(--text-secondary)]">
-                            {copiedCode === codeIndex ? (
-                                <>
-                                    <Check size={14} className="text-green-500" />
-                                    <span className="text-green-500">Copied!</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Copy size={14} />
-                                    <span>Copy</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
-                    <SyntaxHighlighter
-                        style={vscDarkPlus}
-                        language={match[1]}
-                        PreTag="div"
-                        customStyle={{
-                            margin: 0,
-                            borderRadius: '0 0 0.375rem 0.375rem',
-                            fontSize: '0.875rem',
-                            background: 'var(--bg-tertiary)'
-                        }}
-                        {...props}
-                    >
-                        {codeString}
-                    </SyntaxHighlighter>
-                </div>
-            ) : (
-                <code className="bg-[var(--bg-tertiary)] px-1.5 py-0.5 rounded text-sm font-mono border border-[var(--border-light)]" {...props}>
-                    {children}
-                </code>
-            );
-        },
-        p({ children }) {
-            return <p className="mb-3 last:mb-0 leading-7">{children}</p>;
-        },
-        ul({ children }) {
-            return <ul className="list-disc pl-6 mb-3 space-y-1.5">{children}</ul>;
-        },
-        ol({ children }) {
-            return <ol className="list-decimal pl-6 mb-3 space-y-1.5">{children}</ol>;
-        },
-        li({ children }) {
-            return <li className="leading-7">{children}</li>;
-        },
-        h1({ children }) {
-            return <h1 className="text-2xl font-semibold mb-3 mt-4">{children}</h1>;
-        },
-        h2({ children }) {
-            return <h2 className="text-xl font-semibold mb-2.5 mt-4">{children}</h2>;
-        },
-        h3({ children }) {
-            return <h3 className="text-lg font-semibold mb-2 mt-3">{children}</h3>;
-        },
-        blockquote({ children }) {
-            return (
-                <blockquote className="border-l-3 border-[var(--accent)] pl-4 my-3 text-[var(--text-secondary)]">
-                    {children}
-                </blockquote>
-            );
-        },
-        a({ children, href }) {
-            return (
-                <a
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[var(--accent)] hover:underline"
-                >
-                    {children}
-                </a>
-            );
-        },
-        table({ children }) {
-            return (
-                <div className="overflow-x-auto my-4">
-                    <table className="min-w-full border border-[var(--border)] rounded-lg">
-                        {children}
-                    </table>
-                </div>
-            );
-        },
-        th({ children }) {
-            return (
-                <th className="border border-[var(--border)] px-4 py-2 bg-[var(--bg-tertiary)] text-left font-semibold">
-                    {children}
-                </th>
-            );
-        },
-        td({ children }) {
-            return (
-                <td className="border border-[var(--border)] px-4 py-2">
-                    {children}
-                </td>
-            );
+function CopyButton({ text, label = 'Copy', className = '' }) {
+    const [state, setState] = useState('idle');
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setState('copied');
+        } catch {
+            setState('unavailable');
         }
+        setTimeout(() => setState('idle'), 2000);
     };
+    return <button className={className} onClick={copy} aria-label={state === 'copied' ? 'Copied' : label} title={state === 'unavailable' ? 'Clipboard unavailable in this browser' : label}>
+        {state === 'copied' ? <Check size={15} /> : <Copy size={15} />}<span>{state === 'copied' ? 'Copied' : state === 'unavailable' ? 'Copy unavailable' : label}</span>
+    </button>;
+}
 
-    return (
-        <div className={`flex gap-3 md:gap-4 py-6 px-4 transition-colors ${isUser ? '' : 'bg-[var(--bg-secondary)]'
-            }`}>
-            <div className={`w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center shrink-0 ${isUser
-                ? 'bg-[var(--accent)] text-white'
-                : ''
-                }`}>
-                {isUser ? <User size={18} /> : <img src="/claude-logo.svg" alt="Claude" className="w-full h-full" />}
-            </div>
+function CodeBlock({ children }) {
+    const { isDarkMode } = useTheme();
+    const child = Array.isArray(children) ? children[0] : children;
+    const language = /language-([\w+-]+)/.exec(child?.props?.className || '')?.[1] || 'text';
+    const code = String(child?.props?.children || '').replace(/\n$/, '');
+    return <div className="code-block"><div className="code-heading">{language !== 'text' ? <span>{language}</span> : <span />}<div><button aria-label="Download code" title="Download code" onClick={() => downloadText(`snippet.${language === 'text' ? 'txt' : language}`, code, 'text/plain')}><Download size={14} /></button><CopyButton text={code} label="Copy code" /></div></div>
+        <SyntaxHighlighter language={language} style={isDarkMode ? vscDarkPlus : oneLight} PreTag="div" customStyle={{ margin: 0, background: 'transparent', padding: '18px 20px', fontSize: '13px', lineHeight: 1.65 }} codeTagProps={{ style: { fontFamily: 'var(--font-mono)' } }}>{code}</SyntaxHighlighter>
+    </div>;
+}
 
-            <div className="flex-1 overflow-hidden">
-                <div className="font-medium text-sm mb-1.5 text-[var(--text-primary)]">
-                    {isUser ? 'You' : 'Open Claude'}
-                </div>
+const markdownComponents = {
+    pre: CodeBlock,
+    code: ({ children }) => <code>{children}</code>,
+    a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer">{children}</a>,
+    table: ({ children }) => <div className="markdown-table"><table>{children}</table></div>,
+    img: ({ src, alt }) => <img src={src} alt={alt || 'Image in response'} loading="lazy" />
+};
 
-                {/* Display uploaded images */}
-                {message.images && message.images.length > 0 && (
-                    <div className="mb-3 flex gap-2 flex-wrap">
-                        {message.images.map((img, idx) => (
-                            <img
-                                key={idx}
-                                src={img.dataUrl}
-                                alt={img.name || `Image ${idx + 1}`}
-                                className="max-w-[200px] max-h-[200px] rounded-lg border border-[var(--border)] object-cover"
-                            />
-                        ))}
-                    </div>
-                )}
+export function MarkdownContent({ content }) {
+    return <div className="oc-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{content || ''}</ReactMarkdown></div>;
+}
 
-                {/* Show ThinkingDisplay for completed messages with thinking - ONLY if thinking exists */}
-                {!isUser && message.metadata?.thinking && message.metadata.thinking.trim() !== '' && (
-                    <ThinkingDisplay
-                        thinking={message.metadata.thinking}
-                        tokens={message.metadata.thinkingTokens}
-                        duration={message.metadata.duration}
-                        isStreaming={false}
-                    />
-                )}
-
-                <div className="prose prose-sm max-w-none text-[var(--text-primary)] leading-relaxed">
-                    {(() => {
-                        // Regex to match artifact placeholders
-                        const artifactRegex = /:::artifact\{id="([^"]+)" title="([^"]+)" type="([^"]+)"\}/g;
-                        const elements = [];
-                        let lastIndex = 0;
-                        let match;
-
-                        // Use exec to find all matches and their indices
-                        while ((match = artifactRegex.exec(message.content)) !== null) {
-                            // Add text before the match
-                            const beforeText = message.content.substring(lastIndex, match.index);
-                            if (beforeText) {
-                                elements.push(
-                                    <ReactMarkdown
-                                        key={`text-${lastIndex}`}
-                                        remarkPlugins={[remarkGfm]}
-                                        components={markdownComponents}
-                                    >
-                                        {beforeText}
-                                    </ReactMarkdown>
-                                );
-                            }
-
-                            // Add the artifact placeholder UI
-                            const [fullMatch, id, title, type] = match;
-                            elements.push(
-                                <div
-                                    key={`artifact-${id}`}
-                                    onClick={() => {
-                                        setCurrentArtifactId(id);
-                                        setIsArtifactOpen(true);
-                                    }}
-                                    className="my-3 p-3 bg-[var(--bg-tertiary)] border border-[var(--border)] rounded-lg cursor-pointer hover:border-[var(--accent)] transition-colors group flex items-center gap-3"
-                                >
-                                    <div className="w-10 h-10 bg-[var(--bg-secondary)] rounded-md flex items-center justify-center text-[var(--accent)]">
-                                        <Code size={20} />
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="font-medium text-sm">Artifact Created</div>
-                                        <div className="text-xs text-[var(--text-tertiary)]">Click to view {title}</div>
-                                    </div>
-                                    <ExternalLink size={16} className="text-[var(--text-tertiary)] group-hover:text-[var(--accent)] transition-colors" />
-                                </div>
-                            );
-
-                            lastIndex = match.index + fullMatch.length;
-                        }
-
-                        // Add remaining text after all matches
-                        const remainingText = message.content.substring(lastIndex);
-                        if (remainingText || elements.length === 0) {
-                            elements.push(
-                                <ReactMarkdown
-                                    key={`text-${lastIndex}`}
-                                    remarkPlugins={[remarkGfm]}
-                                    components={markdownComponents}
-                                >
-                                    {remainingText || ""}
-                                </ReactMarkdown>
-                            );
-                        }
-
-                        return elements;
-                    })()}
-                </div>
-
-                {/* Show citations if this message has search sources */}
-                {!isUser && message.metadata?.searchSources && message.metadata.searchSources.length > 0 && (
-                    <CitationDisplay
-                        sources={message.metadata.searchSources}
-                        searchQuery={message.metadata.searchQuery}
-                    />
-                )}
-            </div>
+export function ChatMessage({ message, onEdit, onRetry, streaming = false }) {
+    const isUser = message.role === 'user';
+    const [feedback, setFeedback] = useState(null);
+    const { setCurrentArtifactId, setIsArtifactOpen } = useChat();
+    const segments = [];
+    const pattern = /:::artifact\{id="([^"]+)" title="([^"]+)" type="([^"]+)"\}/g;
+    let previous = 0;
+    for (const match of message.content.matchAll(pattern)) {
+        if (match.index > previous) segments.push(<MarkdownContent key={`text-${previous}`} content={message.content.slice(previous, match.index)} />);
+        segments.push(<button key={`artifact-${match.index}`} className="artifact-card" onClick={() => { setCurrentArtifactId(match[1]); setIsArtifactOpen(true); }}>
+            <span className="artifact-icon"><Code size={21} /></span><span><strong>{match[2]}</strong><small>Click to open</small></span><ArrowUpRight size={17} />
+        </button>);
+        previous = match.index + match[0].length;
+    }
+    if (previous < message.content.length || !segments.length) segments.push(<MarkdownContent key={`text-${previous}`} content={message.content.slice(previous)} />);
+    return <article className={`oc-message ${isUser ? 'message-user' : 'message-assistant'} ${streaming ? 'is-streaming' : ''}`} aria-label={isUser ? 'Your message' : 'Open Claude response'}>
+        <div className="message-body">
+            {!!message.images?.length && <div className="message-images">{message.images.map((image, index) => <img key={index} src={image.dataUrl} alt={image.name || 'Attached image'} />)}</div>}
+            {!!message.metadata?.attachments?.length && <div className="message-files">{message.metadata.attachments.map((file, index) => <span key={index}><FileText size={16} />{file.name}</span>)}</div>}
+            {!isUser && message.metadata?.thinking?.trim() && <ThinkingDisplay thinking={message.metadata.thinking} duration={message.metadata.duration} isStreaming={streaming && !message.content?.trim()} />}
+            {isUser ? <p className="user-text">{message.content}</p> : segments}
+            {!isUser && !!message.metadata?.searchSources?.length && <CitationDisplay sources={message.metadata.searchSources} searchQuery={message.metadata.searchQuery} />}
         </div>
-    );
+        {!streaming && <div className="message-actions">
+            {!isUser && <img className="response-mark" src="/claude-logo.svg" alt="" />}
+            <CopyButton text={message.content} label="Copy message" className="icon-button action-copy" />
+            {isUser && onEdit && <button className="icon-button" aria-label="Edit and resend message" title="Edit and resend" onClick={() => onEdit(message.content)}><Pencil size={15} /></button>}
+            {!isUser && <>
+                <button className={`icon-button ${feedback === 'up' ? 'is-selected' : ''}`} aria-label="Mark helpful (local only)" aria-pressed={feedback === 'up'} title="Helpful — saved for this session only" onClick={() => setFeedback(feedback === 'up' ? null : 'up')}><ThumbsUp size={15} /></button>
+                <button className={`icon-button ${feedback === 'down' ? 'is-selected' : ''}`} aria-label="Mark unhelpful (local only)" aria-pressed={feedback === 'down'} title="Not helpful — saved for this session only" onClick={() => setFeedback(feedback === 'down' ? null : 'down')}><ThumbsDown size={15} /></button>
+                {onRetry && <button className="icon-button" aria-label="Retry response" title="Retry" onClick={onRetry}><RefreshCw size={15} /></button>}
+            </>}
+        </div>}
+    </article>;
 }

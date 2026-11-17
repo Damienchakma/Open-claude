@@ -5,10 +5,13 @@ import { TavilyClient } from './tavily';
 import { LLMFactory } from './llm/clients';
 
 export class IntelligentSearchTool {
-    constructor(apiKey, llmProvider = null, llmApiKey = null) {
-        this.tavily = new TavilyClient(apiKey);
+    constructor(apiKey, llmProvider = null, llmApiKey = null, signal = undefined, llmModel = '', clientOptions = {}) {
+        this.signal = signal;
+        this.tavily = new TavilyClient(apiKey, signal);
         this.llmProvider = llmProvider;
         this.llmApiKey = llmApiKey;
+        this.llmModel = llmModel;
+        this.clientOptions = clientOptions;
         this.searchHistory = [];
         this.logoCache = new Map(); // Cache logos to avoid repeated fetches
     }
@@ -34,7 +37,7 @@ export class IntelligentSearchTool {
 
             // Test if clearbit logo exists (it returns 404 for unknown domains)
             try {
-                const response = await fetch(clearbitLogo, { method: 'HEAD' });
+                const response = await fetch(clearbitLogo, { method: 'HEAD', signal: this.signal });
                 if (response.ok) {
                     this.logoCache.set(domain, clearbitLogo);
                     return clearbitLogo;
@@ -196,7 +199,7 @@ export class IntelligentSearchTool {
         // If we have LLM access, use it for smart reformulation
         if (this.llmProvider && this.llmApiKey) {
             try {
-                const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey);
+                const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey, this.clientOptions);
                 let reformulated = '';
 
                 const currentYear = new Date().getFullYear();
@@ -219,15 +222,16 @@ Original query: "${originalQuery}"
 Optimized search query (2-6 words only):`;
 
                 const helperModel = this.llmProvider === 'gemini'
-                    ? 'gemini-1.5-flash'
+                    ? 'gemini-2.5-flash'
                     : this.llmProvider === 'openai'
                         ? 'gpt-4o-mini'
-                        : 'llama-3.3-70b-versatile';
+                        : this.llmProvider === 'groq' ? 'openai/gpt-oss-20b' : this.llmModel;
 
                 await client.streamChat(
                     [{ role: 'user', content: prompt }],
                     (chunk) => { reformulated += chunk; },
-                    helperModel
+                    helperModel,
+                    { signal: this.signal }
                 );
 
                 const cleaned = reformulated.trim().replace(/^["']|["']$/g, '');
@@ -799,18 +803,19 @@ Optimized search query (2-6 words only):`;
         {"action": "finish", "reasoning": "why complete"} (ONLY if time > 180s and all sub-aspects verified)`;
 
         try {
-            const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey);
+            const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey, this.clientOptions);
             let response = '';
             const helperModel = this.llmProvider === 'gemini'
-                ? 'gemini-1.5-flash'
+                ? 'gemini-2.5-flash'
                 : this.llmProvider === 'openai'
                     ? 'gpt-4o-mini'
-                    : 'llama-3.3-70b-versatile';
+                    : this.llmProvider === 'groq' ? 'openai/gpt-oss-20b' : this.llmModel;
 
             await client.streamChat(
                 [{ role: 'user', content: prompt }],
                 (chunk) => { response += chunk; },
-                helperModel
+                helperModel,
+                { signal: this.signal }
             );
             const cleaned = response.replace(/```json|```/g, '').trim();
             return JSON.parse(cleaned);
@@ -835,18 +840,19 @@ Optimized search query (2-6 words only):`;
         JSON array of strings only.`;
 
         try {
-            const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey);
+            const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey, this.clientOptions);
             let response = '';
             const helperModel = this.llmProvider === 'gemini'
-                ? 'gemini-1.5-flash'
+                ? 'gemini-2.5-flash'
                 : this.llmProvider === 'openai'
                     ? 'gpt-4o-mini'
-                    : 'llama-3.3-70b-versatile';
+                    : this.llmProvider === 'groq' ? 'openai/gpt-oss-20b' : this.llmModel;
 
             await client.streamChat(
                 [{ role: 'user', content: prompt }],
                 (chunk) => { response += chunk; },
-                helperModel
+                helperModel,
+                { signal: this.signal }
             );
             const cleaned = response.replace(/```json|```/g, '').trim();
             return JSON.parse(cleaned);
@@ -976,15 +982,15 @@ You are not a chatbot. You are a **research scientist**. Deliver **flawless, pub
 
         // Pass to LLM for final paper generation
         try {
-            const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey);
+            const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey, this.clientOptions);
             let paper = '';
 
             // Use a higher-intelligence model for the final paper if possible
             const model = this.llmProvider === 'gemini'
-                ? 'gemini-1.5-pro'
+                ? 'gemini-2.5-pro'
                 : this.llmProvider === 'groq'
-                    ? 'llama-3.3-70b-versatile'
-                    : 'gpt-4o';
+                    ? 'openai/gpt-oss-20b'
+                    : this.llmProvider === 'openai' ? 'gpt-4o' : this.llmModel;
 
             await client.streamChat(
                 [
@@ -992,7 +998,8 @@ You are not a chatbot. You are a **research scientist**. Deliver **flawless, pub
                     { role: 'user', content: `Based on this research context, generate the professional research paper for the query: "${userQuery}"\n\nContext:\n${context}` }
                 ],
                 (chunk) => { paper += chunk; },
-                model
+                model,
+                { signal: this.signal }
             );
 
             return paper.trim();
