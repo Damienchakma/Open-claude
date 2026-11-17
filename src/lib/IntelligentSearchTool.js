@@ -222,9 +222,9 @@ Original query: "${originalQuery}"
 Optimized search query (2-6 words only):`;
 
                 const helperModel = this.llmProvider === 'gemini'
-                    ? 'gemini-2.5-flash'
+                    ? 'gemini-3.5-flash-lite'
                     : this.llmProvider === 'openai'
-                        ? 'gpt-4o-mini'
+                        ? 'gpt-6-luna'
                         : this.llmProvider === 'groq' ? 'openai/gpt-oss-20b' : this.llmModel;
 
                 await client.streamChat(
@@ -806,9 +806,9 @@ Optimized search query (2-6 words only):`;
             const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey, this.clientOptions);
             let response = '';
             const helperModel = this.llmProvider === 'gemini'
-                ? 'gemini-2.5-flash'
+                ? 'gemini-3.5-flash-lite'
                 : this.llmProvider === 'openai'
-                    ? 'gpt-4o-mini'
+                    ? 'gpt-6-luna'
                     : this.llmProvider === 'groq' ? 'openai/gpt-oss-20b' : this.llmModel;
 
             await client.streamChat(
@@ -843,9 +843,9 @@ Optimized search query (2-6 words only):`;
             const client = LLMFactory.getClient(this.llmProvider, this.llmApiKey, this.clientOptions);
             let response = '';
             const helperModel = this.llmProvider === 'gemini'
-                ? 'gemini-2.5-flash'
+                ? 'gemini-3.5-flash-lite'
                 : this.llmProvider === 'openai'
-                    ? 'gpt-4o-mini'
+                    ? 'gpt-6-luna'
                     : this.llmProvider === 'groq' ? 'openai/gpt-oss-20b' : this.llmModel;
 
             await client.streamChat(
@@ -987,10 +987,10 @@ You are not a chatbot. You are a **research scientist**. Deliver **flawless, pub
 
             // Use a higher-intelligence model for the final paper if possible
             const model = this.llmProvider === 'gemini'
-                ? 'gemini-2.5-pro'
+                ? 'gemini-4-carbon'
                 : this.llmProvider === 'groq'
                     ? 'openai/gpt-oss-20b'
-                    : this.llmProvider === 'openai' ? 'gpt-4o' : this.llmModel;
+                    : this.llmProvider === 'openai' ? 'gpt-6-astra' : this.llmModel;
 
             await client.streamChat(
                 [

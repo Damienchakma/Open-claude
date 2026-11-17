@@ -32,9 +32,13 @@ let release;
 const requests = [];
 await context.route('http://localhost:11434/**', route => route.fulfill({ json: { models: [] } }));
 await context.route('http://localhost:1234/**', route => route.fulfill({ json: { data: [] } }));
-await context.route('https://api.openai.com/**', route => route.fulfill({ json: { data: [{ id: 'gpt-4o' }] } }));
+await context.route('https://api.openai.com/**', async route => {
+    if (route.request().url().endsWith('/models')) return route.fulfill({ json: { data: [{ id: 'gpt-6-astra' }] } });
+    requests.push(route.request().postDataJSON());
+    await route.fulfill({ contentType: 'text/event-stream', body: response('Test fixture response. **Streaming works.**') });
+});
 await context.route('https://api.groq.com/**', async route => {
-    if (route.request().url().endsWith('/models')) return route.fulfill({ json: { data: [{ id: 'llama-3.3-70b-versatile', context_window: 128000 }, { id: 'llama-4-scout-vision', context_window: 128000 }] } });
+    if (route.request().url().endsWith('/models')) return route.fulfill({ json: { data: [{ id: 'openai/gpt-oss-120b', context_window: 131072 }, { id: 'qwen/qwen3.8-27b', context_window: 131072 }] } });
     requests.push(route.request().postDataJSON());
     if (mode === 'deferred') await new Promise(resolve => { release = resolve; });
     if (mode === 'error') return route.fulfill({ status: 401, json: { error: { message: 'Test fixture: invalid credential' } } });
@@ -134,17 +138,17 @@ try {
     await page.locator('#provider').selectOption('openai');
     await page.getByLabel('OpenAI API key', { exact: true }).fill('test-only-not-a-real-key');
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('#settings-model option[value="gpt-4o"]'));
+    await page.waitForFunction(() => document.querySelector('#settings-model option[value="gpt-6-astra"]'));
     await page.locator('#provider').selectOption('groq');
-    await page.waitForFunction(() => document.querySelector('#settings-model option[value="llama-3.3-70b-versatile"]'));
+    await page.waitForFunction(() => document.querySelector('#settings-model option[value="openai/gpt-oss-120b"]'));
     await closeSettings();
     await newChat();
     await page.getByRole('button', { name: 'Choose model' }).click();
     await page.getByRole('textbox', { name: 'Search models' }).fill('openai');
-    await page.getByRole('menuitemradio', { name: /gpt-4o/ }).click();
+    await page.getByRole('menuitemradio', { name: /gpt-6-astra/ }).click();
     assert.equal(await page.evaluate(() => localStorage.getItem('selected_provider')), 'openai');
     await page.getByRole('button', { name: 'Choose model' }).click();
-    await page.getByRole('menuitemradio', { name: /llama-3.3-70b-versatile/ }).click();
+    await page.getByRole('menuitemradio', { name: /gpt-oss-120b/ }).click();
     await page.getByLabel('Attach files', { exact: true }).setInputFiles({ name: 'notes.md', mimeType: 'text/plain', buffer: Buffer.from('Keep the original attachment text.') });
     await page.locator('.file-attachment').waitFor();
     await draft().fill('Read my notes');
@@ -157,7 +161,8 @@ try {
     await page.getByLabel('Attach files', { exact: true }).setInputFiles({ name: 'unsupported.pdf', mimeType: 'application/pdf', buffer: Buffer.from('not a decoded document') });
     await page.getByRole('alert').filter({ hasText: 'decoding is not available' }).waitFor();
     await page.getByRole('button', { name: 'Choose model' }).click();
-    await page.getByRole('menuitemradio', { name: /llama-4-scout-vision/ }).click();
+    await page.getByRole('textbox', { name: 'Search models' }).fill('gpt-6');
+    await page.getByRole('menuitemradio', { name: /gpt-6-astra/ }).click();
     await page.getByLabel('Attach files', { exact: true }).setInputFiles({ name: 'pixel.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZkAAAAASUVORK5CYII=', 'base64') });
     await page.getByRole('img', { name: 'Attached image preview' }).waitFor();
     assert.equal(await page.getByRole('button', { name: 'Send message', exact: true }).isEnabled(), true);
@@ -167,7 +172,7 @@ try {
     checked('Unsupported file feedback and an image-only multimodal request');
     await newChat();
     await page.getByRole('button', { name: 'Choose model' }).click();
-    await page.getByRole('menuitemradio', { name: /llama-3.3-70b-versatile/ }).click();
+    await page.getByRole('menuitemradio', { name: /gpt-oss-120b/ }).click();
     await page.getByRole('button', { name: 'Read my notes', exact: true }).click();
     await draft().fill('Remember this attachment');
     await page.getByRole('button', { name: 'Send message', exact: true }).click();

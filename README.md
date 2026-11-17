@@ -82,24 +82,26 @@ November 2026.
 
 | Provider | Auth | Browser (CORS) access | Default model |
 | --- | --- | --- | --- |
-| Anthropic (Claude) | API key | Verified | `claude-sonnet-4-5` |
-| OpenAI | API key | Verified | `gpt-4o` |
-| Google Gemini | API key | Verified | `gemini-2.5-flash` |
+| Anthropic (Claude) | API key | Verified | `claude-sonnet-5-5` |
+| OpenAI | API key | Verified | `gpt-6-astra` |
+| Google Gemini | API key | Verified | `gemini-4-hydrogen` |
 | Groq | API key | Verified, **live-tested** | `openai/gpt-oss-120b` |
 | OpenRouter | API key | Verified | `openrouter/auto` |
-| Mistral AI | API key | Verified | `mistral-large-latest` |
-| DeepSeek | API key | Verified | `deepseek-chat` |
-| xAI (Grok) | API key | Verified | `grok-4` |
-| Together AI | API key | Verified | `meta-llama/Llama-3.3-70B-Instruct-Turbo` |
-| Cerebras | API key | Verified | `llama-3.3-70b` |
-| Fireworks AI | API key | Verified | `accounts/fireworks/models/llama-v3p3-70b-instruct` |
+| Mistral AI | API key | Verified | `mistral-large-4` |
+| DeepSeek | API key | Verified | `deepseek-flash` |
+| xAI (Grok) | API key | Verified | `grok-4.7` |
+| Together AI | API key | Verified | `moonshotai/Kimi-K3.1-Pro` |
+| Cerebras | API key | Verified | `gpt-oss-120b` |
+| Fireworks AI | API key | Verified | `accounts/fireworks/models/deepseek-v4p1-flash-1017` |
 | Custom OpenAI-compatible endpoint | Optional key + base URL | Depends on your server | your choice |
-| Ollama (local) | none | Requires Ollama running with CORS enabled | `llama3` |
+| Ollama (local) | none | Requires Ollama running with CORS enabled | `qwen3` |
 | LM Studio (local) | none | Requires LM Studio server with CORS enabled | `local-model` |
 
 "Verified" means the provider's CORS preflight was checked from a browser origin and the client is
-covered by unit tests. **Only Groq has been exercised end-to-end with live inference in this
-repository's browser tests**; the other cloud providers need your own key to try. Anthropic requests
+covered by unit tests. Default model IDs were re-checked against each provider's public catalog or
+documentation on 17 November 2026, and retired IDs (`deepseek-chat`, `grok-4`, `gemini-2.5-flash`,
+the Llama 3.3 serverless tiers) were replaced. **Only Groq has been exercised end-to-end with live
+inference in this repository's browser tests**; the other cloud providers need your own key to try. Anthropic requests
 include the `anthropic-dangerous-direct-browser-access` header that Anthropic requires for
 client-side calls — use a key you are comfortable exposing to a browser, and rotate it if leaked.
 

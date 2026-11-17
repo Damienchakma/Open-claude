@@ -55,6 +55,12 @@ Reasoning / artifacts / MCP round (2026-11-17, later same day):
 - Live MCP suite (`scripts/live-mcp.mjs`, 4 checks): a real local Streamable HTTP MCP server plus real Groq `openai/gpt-oss-120b` tool calling — initialize/tools/list/tools/call observed server-side, arguments intact, session header reused, answer grounded in the tool result. Screenshot `screenshots/live-mcp.png`; settings screenshot `screenshots/desktop-settings-mcp.png`.
 - MCP scope: browser-only Streamable HTTP/SSE transport with CORS; stdio servers require an HTTP bridge; tool calling implemented for OpenAI-compatible and Anthropic clients only. These limits are stated in Settings and the README rather than hidden.
 
+Provider default refresh (2026-11-17, later same day):
+
+- Default model IDs re-verified against official catalogs/docs and replaced where retired: Anthropic `claude-sonnet-5-5`, OpenAI `gpt-6-astra`, Gemini `gemini-4-hydrogen` (2.5 deprecated), xAI `grok-4.7` (grok-4 retired), Mistral `mistral-large-4` (Medium 3.5 deprecated), DeepSeek `deepseek-flash` (`deepseek-chat` retired 2026-07-24), Together `moonshotai/Kimi-K3.1-Pro`, Cerebras `gpt-oss-120b`, Fireworks `accounts/fireworks/models/deepseek-v4p1-flash-1017`, Ollama `qwen3`. Groq kept `openai/gpt-oss-120b`, confirmed against its live `/models` catalog; OpenRouter kept the evergreen `openrouter/auto`.
+- Touched: `providers.js` defaults, client parameter fallbacks, `ModelService.js` fallback catalogs/vision patterns/vision suggestions, `IntelligentSearchTool.js` helper models, README provider table, mocked UI fixture IDs (vision path now exercises OpenAI `gpt-6-astra`, since Groq's current catalog has no vision model).
+- Re-ran after the refresh: 33 unit tests, 18 browser groups, 15 live Groq checks and the production build — all passed. Other providers' defaults are doc/catalog-verified, not live-inference-verified.
+
 The REA local interaction replay opened the app, selected Account menu → View example conversation, waited for the explicit example label, and captured accessibility/screenshot/URL successfully. Retained parent evidence: `ev_fdcb7a5f439bf0580d17f7a497b5426d8b4d18c164a3908a139bed00d0ccf1a6`; summary projection: `ev_79e3bcb956ee9e74224b8b948417490f739d4248e58c7ec60c6f97d4bafdea32`. This replay preceded the final refinements; the final Chrome regression suite above verifies those refinements.
 
 ## Reproduce the checks

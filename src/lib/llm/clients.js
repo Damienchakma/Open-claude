@@ -293,7 +293,7 @@ const completeToolCalls = slots => slots.filter(call => call?.id && call.functio
 
 // OpenAI Client with comprehensive detection
 export class OpenAIClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'gpt-4o', options = {}) {
+    async streamChat(messages, onChunk, modelId = 'gpt-6-astra', options = {}) {
         if (!this.apiKey) throw new Error('OpenAI API Key missing');
 
         const tagParser = new StreamingTagParser();
@@ -611,7 +611,7 @@ export function toAnthropicMessages(messages) {
 
 // Anthropic Messages API; direct browser access must be opted into with a dedicated header.
 export class AnthropicClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'claude-sonnet-4-5', options = {}) {
+    async streamChat(messages, onChunk, modelId = 'claude-sonnet-5-5', options = {}) {
         if (!this.apiKey) throw new Error('Anthropic API key missing. Please add your Anthropic API key in Settings.');
         const { system, messages: converted } = toAnthropicMessages(messages);
         const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -652,12 +652,12 @@ export class AnthropicClient extends BaseClient {
 
 // Gemini Client with universal detection
 export class GeminiClient extends BaseClient {
-    async streamChat(messages, onChunk, modelId = 'gemini-2.5-flash', options = {}) {
+    async streamChat(messages, onChunk, modelId = 'gemini-4-hydrogen', options = {}) {
         if (!this.apiKey) throw new Error('Gemini API Key missing');
 
         // Sanitize modelId - strip 'models/' prefix if present
-        let cleanModelId = (modelId || 'gemini-2.5-flash').trim().replace(/^models\//, '');
-        if (!cleanModelId) cleanModelId = 'gemini-2.5-flash';
+        let cleanModelId = (modelId || 'gemini-4-hydrogen').trim().replace(/^models\//, '');
+        if (!cleanModelId) cleanModelId = 'gemini-4-hydrogen';
 
         const url = new URL(`https://generativelanguage.googleapis.com/v1beta/models/${cleanModelId}:streamGenerateContent`);
         url.searchParams.set('key', this.apiKey);
@@ -899,7 +899,7 @@ export class OllamaClient extends BaseClient {
         super(null);
     }
 
-    async streamChat(messages, onChunk, modelId = 'llama2', options = {}) {
+    async streamChat(messages, onChunk, modelId = 'qwen3', options = {}) {
         const tagParser = new StreamingTagParser();
 
         const formattedMessages = messages.map(m => {

@@ -9,6 +9,7 @@ const VISION_PATTERNS = {
         '-vl',               // Qwen2-VL, Qwen2.5-VL, InternVL
         '_vl',
         'vl-',
+        'gpt-6',             // OpenAI GPT-6 series (Astra, Sol, Terra, Luna)
         'gpt-5',             // OpenAI GPT-5 series (GPT-5.6, GPT-5.2, GPT-5-mini)
         'gpt-4.5',           // GPT-4.5
         'gpt-4o',            // OpenAI multimodal (gpt-4o, gpt-4o-mini)
@@ -36,7 +37,9 @@ const VISION_PATTERNS = {
         'qwen2.5-vl',        // Qwen2.5-VL
         'qwen-vl',
         'qwen-3.6',          // Qwen 3.6 multimodal
-        'deepseek-v4',       // DeepSeek V4 multimodal
+        'deepseek*flash',    // DeepSeek V4/V4.1 Flash multimodal (V4 Pro is text-only)
+        'kimi-k3',           // Moonshot Kimi K3 / K3.1 Pro multimodal
+        'mistral-large-4',   // Mistral Large 4 vision encoder
         'granite.*vision',   // IBM Granite vision
         'cogvlm',            // CogVLM
         'internvl',          // InternVL
@@ -293,11 +296,11 @@ export function formatImagesForProvider(images, provider, textContent) {
  */
 export function getVisionModelSuggestions(provider) {
     const suggestions = {
-        openai: 'GPT-4o, GPT-4o Mini, GPT-4 Turbo',
-        groq: 'Llama 3.2 Vision, Llama 4 Scout/Maverick, LLaVA, Pixtral',
-        gemini: 'Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini 2.0',
-        anthropic: 'Any Claude 3 or Claude 4 model',
-        ollama: 'LLaVA, Llama 3.2 Vision models',
+        openai: 'GPT-6 Astra, GPT-6.1 Sol, GPT-6 Luna',
+        groq: "Groq's current catalog is text-only — pick a vision model from another provider",
+        gemini: 'Gemini 4 Hydrogen, Gemini 4 Argon, Gemini 3.8 Flash',
+        anthropic: 'Any Claude 5 model, e.g. Claude Sonnet 5.5',
+        ollama: 'LLaVA, Gemma 3, Qwen2.5-VL or other multimodal models',
         lmstudio: 'LLaVA or other multimodal models'
     };
 
@@ -365,12 +368,9 @@ export class ModelService {
             console.error('Error fetching OpenAI models:', error);
             // Return fallback list
             return [
-                { id: 'gpt-5.6', name: 'GPT-5.6 Sol', provider: 'openai', capabilities: getModelCapabilities('gpt-5.6', 'openai') },
-                { id: 'gpt-5.2', name: 'GPT-5.2', provider: 'openai', capabilities: getModelCapabilities('gpt-5.2', 'openai') },
-                { id: 'o3-mini', name: 'o3 Mini (Reasoning)', provider: 'openai', capabilities: getModelCapabilities('o3-mini', 'openai') },
-                { id: 'o1', name: 'o1 Reasoning', provider: 'openai', capabilities: getModelCapabilities('o1', 'openai') },
-                { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai', capabilities: getModelCapabilities('gpt-4o', 'openai') },
-                { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai', capabilities: getModelCapabilities('gpt-4o-mini', 'openai') }
+                { id: 'gpt-6-astra', name: 'GPT-6 Astra', provider: 'openai', capabilities: getModelCapabilities('gpt-6-astra', 'openai') },
+                { id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol', provider: 'openai', capabilities: getModelCapabilities('gpt-6.1-sol', 'openai') },
+                { id: 'gpt-6-luna', name: 'GPT-6 Luna', provider: 'openai', capabilities: getModelCapabilities('gpt-6-luna', 'openai') }
             ];
         }
     }
@@ -560,9 +560,9 @@ export class ModelService {
                 .sort((a, b) => a.id.localeCompare(b.id));
 
             const finalModels = models.length > 0 ? models : [
-                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-flash', 'gemini') },
-                { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.0-flash', 'gemini') },
-                { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-pro', 'gemini') }
+                { id: 'gemini-4-hydrogen', name: 'Gemini 4 Hydrogen', provider: 'gemini', capabilities: getModelCapabilities('gemini-4-hydrogen', 'gemini') },
+                { id: 'gemini-4-argon', name: 'Gemini 4 Argon', provider: 'gemini', capabilities: getModelCapabilities('gemini-4-argon', 'gemini') },
+                { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-3.8-flash', 'gemini') }
             ];
 
             this.cache.gemini = {
@@ -574,9 +574,9 @@ export class ModelService {
         } catch (error) {
             console.error('Error fetching Gemini models:', error);
             return [
-                { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-flash', 'gemini') },
-                { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.0-flash', 'gemini') },
-                { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'gemini', capabilities: getModelCapabilities('gemini-2.5-pro', 'gemini') }
+                { id: 'gemini-4-hydrogen', name: 'Gemini 4 Hydrogen', provider: 'gemini', capabilities: getModelCapabilities('gemini-4-hydrogen', 'gemini') },
+                { id: 'gemini-4-argon', name: 'Gemini 4 Argon', provider: 'gemini', capabilities: getModelCapabilities('gemini-4-argon', 'gemini') },
+                { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', provider: 'gemini', capabilities: getModelCapabilities('gemini-3.8-flash', 'gemini') }
             ];
         }
     }
