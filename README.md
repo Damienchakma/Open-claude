@@ -177,8 +177,6 @@ disk or screenshots.
 
 ## Limitations
 
-- No server-side features: no cross-device sync, no accounts, no sharing links, no usage billing.
-  Subscription plans and paywalls are intentionally absent.
 - Code/Build editor modes exist in the source but are hidden from the UI until implemented; the
   shipped experience is the chat workspace.
 - There is no toggle for Anthropic extended thinking budget; reasoning is shown whenever the
